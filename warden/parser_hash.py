@@ -1,4 +1,4 @@
-"""条の正規化と content_hash（ADR-0002 P3）。
+"""条の正規化と content_hash（ADR-0002 parse-unit-hash）。
 
 norm_text = 空白・改行を正規化した条本文（RuleUnit.norm_text()）
 content_hash = sha256(norm_text) の先頭 16 hex

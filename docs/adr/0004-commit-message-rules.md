@@ -3,7 +3,7 @@
 - 日付: 2026-10-06
 - 状態: ドラフト（林さんレビュー待ち）
 - 記録者: Devin
-- 関連: ADR-0001 D4（出自表示）・ADR-0002 P5（出自 2 系統）
+- 関連: ADR-0001 req-decontamination（出自表示）・ADR-0002 parse-provenance（出自 2 系統）
 
 ## 目的
 
@@ -22,9 +22,9 @@ AI が書くコミットの形式を揃えることで、warden の出自抽出�
 |---|---|
 | trailer | コミットメッセージ末尾の `Key: value` 形式の行。`git interpret-trailers` で機械的に読み書きできる（`Co-Authored-By:` などが例） |
 | 号令 | 林さんからの明示的な実行指示。「確認」「了承」「意見を聞く質問」は号令ではない（CLAUDE.md §2 由来の語） |
-| 暫定 AI 承認 | AI が推奨に基づき暫定的に承認した状態。デフォルト経路（ADR-0005 O1）。後で林さんの確認を受ける（ADR-0001 D6） |
-| content_hash | 条本文のハッシュ。ADR-0002 P3 を参照 |
-| 出自 | そのルールがいつ・どのコミットで・誰によって入ったかの履歴情報。ADR-0002 P5 を参照 |
+| 暫定 AI 承認 | AI が推奨に基づき暫定的に承認した状態。デフォルト経路（ADR-0005 op-proceed-default）。後で林さんの確認を受ける（ADR-0001 req-status-question） |
+| content_hash | 条本文のハッシュ。ADR-0002 parse-unit-hash を参照 |
+| 出自 | そのルールがいつ・どのコミットで・誰によって入ったかの履歴情報。ADR-0002 parse-provenance を参照 |
 
 ## 適用範囲
 
@@ -35,19 +35,19 @@ AI が書くコミットの形式を揃えることで、warden の出自抽出�
 
 ## 決定事項
 
-### C1. 件名（1 行目）
+### commit-subject. 件名（1 行目）
 
 - 50〜72 文字目安の 1 行。末尾にピリオドを付けない
 - 「何を・どの課題か」が件名だけで分かる書き方にする
 - 決定記録がある変更は識別子を前置する
   - 例: `ADR-0003: SQLite スキーマ設計（ドラフト）を追加`
 
-### C2. 本文
+### commit-body. 本文
 
 - 「なぜ」を書く。「何を」は diff が語るので重複させない
 - 却下した案・前提・参照した文書があれば本文に残す
 
-### C3. 指示の出所を記録する
+### commit-directive-source. 指示の出所を記録する
 
 ルール変更・外向き操作・管理対象ファイルへの変更を含むコミットは、
 本文または trailer に**誰の指示で・いつか**を書く。
@@ -56,38 +56,38 @@ AI が書くコミットの形式を揃えることで、warden の出自抽出�
 - 理由: 「林さんの承認フローを通った変更」と「AI が独自判断で足した変更」を
   後から区別するため。出所記録のないルール変更は審査対象になる
 
-### C4. AI 作成分の明示
+### commit-ai-attribution. AI 作成分の明示
 
 - `Generated with [Devin](...)` と `Co-Authored-By:` trailer は既存どおり付ける
 - どのモデル・エージェントが書いたかを隠さない
 
-### C5. 暫定・確定の区別
+### commit-provisional-tag. 暫定・確定の区別
 
 - 暫定 AI 承認に基づく変更は件名に `[暫定]` を付け、
   林さんの確認で確定したら `[暫定]` を外す変更コミットを作る
-- 理由: D6 の「要確認一覧」と git 履歴を件名レベルで突き合わせるため
+- 理由: req-status-question の「要確認一覧」と git 履歴を件名レベルで突き合わせるため
 
-### C6. 条単位の追跡 trailer（Rule-Unit）
+### commit-rule-unit-trailer. 条単位の追跡 trailer（Rule-Unit）
 
 管理対象リポジトリで**条を追加・変更・削除する**コミットには、
-対象条の content_hash（ADR-0002 P3）を trailer に書く。
+対象条の content_hash（ADR-0002 parse-unit-hash）を trailer に書く。
 
 ```
 Rule-Unit: CLAUDE.md#ab12cd34ef56
 Rule-Unit: rules_git.md#00112233aabb
 ```
 
-- 理由: ADR-0002 P3 の「編集で hash が変わると別条」問題を、
+- 理由: ADR-0002 parse-unit-hash の「編集で hash が変わると別条」問題を、
   コミット記録から確実に橋渡しするため。複数条を変えるコミットは
   trailer を複数行書く
 
-### C7. 隔離・復元コミットの前置
+### commit-quarantine-prefix. 隔離・復元コミットの前置
 
 - 件名を `隔離: <file>#<hash>` / `復元: <file>#<hash>` の形にする
 - 理由: `git log` だけで条の移動履歴が一覧できるようにし、
-  「いつ・どの条が・誰の操作で外れ/戻ったか」を監査可能にする（D1）
+  「いつ・どの条が・誰の操作で外れ/戻ったか」を監査可能にする（req-unit-physical-quarantine）
 
-### C8. 形式違反の扱い
+### commit-format-violation. 形式違反の扱い
 
 - 上記形式を満たさない AI コミットは、warden の採点・監査で
   検出可能な兆候として扱う（異常ではなく「要確認」シグナル）

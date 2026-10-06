@@ -3,7 +3,7 @@
 scan: ファイル走査 → rule_files/rule_units upsert → 新規条は
 under_review 初期状態 → 消えた条は present=0。
 要確認一覧: provisional_ai / 未確認 provisional_records を
-直近スコア降順で返す（O2）。
+直近スコア降順で返す（op-reviewlist-riskorder）。
 """
 
 from __future__ import annotations

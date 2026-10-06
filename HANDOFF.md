@@ -9,18 +9,18 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 
 まず以下のファイルを順に読んでください。
 1. G:\prj2\rule-warden\README.md （いきさつと「逸脱AIの自浄化の限界」の概念）
-2. G:\prj2\rule-warden\docs\adr\0001-requirements-and-architecture.md （確定済み要件 D1〜D8 とコンポーネント図）
+2. G:\prj2\rule-warden\docs\adr\0001-requirements-and-architecture.md （確定済み要件 req-unit-physical-quarantine〜req-ai-gateway とコンポーネント図）
 3. G:\prj2\rule-warden\docs\adr\0002-rule-parser-design.md （条単位パーサー設計・ドラフト）
 4. G:\prj2\rule-warden\docs\adr\0002.5-domain-model.md （要件用語のクラス図・シーケンス図・ドラフト）
 5. G:\prj2\rule-warden\docs\adr\0003-sqlite-schema.md （SQLite スキーマ設計・ドラフト）
 6. G:\prj2\rule-warden\docs\adr\0004-commit-message-rules.md （コミットメッセージルール・ドラフト）
-7. G:\prj2\rule-warden\docs\adr\0005-operation-decisions.md （ヒアリング確定の運用方針 O1〜O11＋仮の決定）
+7. G:\prj2\rule-warden\docs\adr\0005-operation-decisions.md （ヒアリング確定の運用方針 op-proceed-default〜op-modify-provisional＋仮の決定）
 
 状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動・
 初期設定は完了。Forgejo 管理ユーザ warden-admin と private リポジトリ
 warden-admin/claude-rules（.claude 全ブランチ push 済み）、
 warden-admin/rule-warden（本リポジトリのバックアップ）作成済み。
-ADR-0005 で運用方針が確定（O1〜O11）。
+ADR-0005 で運用方針が確定（op-proceed-default〜op-modify-provisional）。
 
 実装: フェーズ 0a・1a〜1e・2a〜2d・3a〜3c・4a〜4c・5a 完了（計画の残は 5b のみ）。
 - Python 3.12・stdlib のみ（外部依存ゼロ）。テスト 83 件通過

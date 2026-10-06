@@ -1,9 +1,9 @@
 """Web UI — stdlib http.server による軽量 API＋画面（4a/4b/4c）。
 
-- GET  /api/units     : 統合一覧（DB条 ∪ quarantine/ ∪ rules_junrule.md・O8）
-- GET  /api/review    : 要確認一覧（provisional_ai・危険度順・O2）
+- GET  /api/units     : 統合一覧（DB条 ∪ quarantine/ ∪ rules_junrule.md・op-junrule-unified-list）
+- GET  /api/review    : 要確認一覧（provisional_ai・危険度順・op-reviewlist-riskorder）
 - POST /api/review    : {"unit_id":N, "action":"confirm|revert"} 林さん判断
-- GET/POST /api/bypass: バイパスモード手動切替（O3）
+- GET/POST /api/bypass: バイパスモード手動切替（op-bypass-manual）
 - GET  /              : 最小 HTML（一覧＋ソート）
 """
 
@@ -70,7 +70,7 @@ def union_list(store: WardenStore, root: Path) -> list[dict]:
     )
     for i in items:
         if i["path"] == "rules_junrule.md" and i["origin"] == "db":
-            i["origin"] = "junrule"  # 準ルール棚として表示（O8）
+            i["origin"] = "junrule"  # 準ルール棚として表示（op-junrule-unified-list）
     text = read_markdown(junrule) if junrule.exists() else None
     if text is not None and not junrule_in_db:
         for u in extract_units(text):

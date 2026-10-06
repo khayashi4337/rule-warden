@@ -2,7 +2,7 @@
 
 アプリ層で検査する（DDL の CHECK では行間制約を表せない）。
 AI 単独の確定は provisional_ai のみ。例外として quarantined も
-AI が自動遷移してよい（O9: 外す方向は無害・復元可能）。
+AI が自動遷移してよい（op-auto-quarantine: 外す方向は無害・復元可能）。
 """
 
 ALLOWED: dict[str, set[str]] = {

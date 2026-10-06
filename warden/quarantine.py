@@ -1,9 +1,9 @@
-"""隔離・復元（ADR-0002 P6/P7、O9/O10）。
+"""隔離・復元（ADR-0002 parse-quarantine-format/parse-restore、op-auto-quarantine/op-sanitize-restore）。
 
 - 隔離: 条の原文を quarantine/<ファイル>/<content_hash>.md へ退避し、
-  元ファイルから該当行を削除する。親条の隔離は子孫を含む（P2 包含）。
+  元ファイルから該当行を削除する。親条の隔離は子孫を含む（parse-nested-bullets 包含）。
 - 復元: 隔離ファイルのメタデータに基づくアンカー位置へ挿入する。
-  挿入する本文はサニタイズ版でありうる（O10）。元文は隔離側に残る。
+  挿入する本文はサニタイズ版でありうる（op-sanitize-restore）。元文は隔離側に残る。
 - すべての書き込みは atomic（同一ディレクトリの一時ファイル + os.replace）。
 """
 
@@ -72,7 +72,7 @@ def _merged_ranges(units: list[RuleUnit]) -> list[tuple[int, int]]:
 
 
 def with_descendants(units: list[RuleUnit], idx: int) -> list[RuleUnit]:
-    """units[idx] とその子孫条を返す（P2 包含隔離）。"""
+    """units[idx] とその子孫条を返す（parse-nested-bullets 包含隔離）。"""
     out = [units[idx]]
     stack = list(units[idx].children)
     while stack:
@@ -178,7 +178,7 @@ def restore(
 ) -> RestoreResult:
     """隔離ファイルのメタデータから復元先を決め、本文を挿入する。
 
-    new_text: 挿入する本文（O10 サニタイズ版）。None なら隔離原文を使う
+    new_text: 挿入する本文（op-sanitize-restore サニタイズ版）。None なら隔離原文を使う
     — 呼び出し側が「unsanitized restore は避ける」ポリシーを制御する。
     """
     result = RestoreResult(ok=False)

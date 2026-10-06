@@ -1,4 +1,4 @@
-"""AiGateway — 採点・審査・サニタイズ AI の抽象化（ADR-0001 D8、O7）。
+"""AiGateway — 採点・審査・サニタイズ AI の抽象化（ADR-0001 req-ai-gateway、op-ai-separate）。
 
 - 採点 AI と審査 AI は別系統プロファイル（ai_profiles テーブル）
 - 契約済みで実際に使えるものから選ぶ。トークン期限切れは監視する
@@ -90,7 +90,7 @@ class MockGateway:
     def sanitize(self, unit_text: str, intent: str) -> str:
         """権限拡大表現を人間承認前提へ書き換える最小サニタイズ。
 
-        意図が読めない場合は呼び出し側が戻さない決定をする（O10）。
+        意図が読めない場合は呼び出し側が戻さない決定をする（op-sanitize-restore）。
         """
         text = unit_text
         subs = [
@@ -135,7 +135,7 @@ class HttpGateway:
 
 
 def check_token_expiry(expires_at: str | None, now: datetime | None = None) -> str:
-    """ai_profiles.expires_at の監視（O7）。
+    """ai_profiles.expires_at の監視（op-ai-separate）。
 
     戻り値: 'ok' | 'expiring_soon'(7日以内) | 'expired' | 'unknown'
     """

@@ -1,9 +1,9 @@
-"""条抽出（ADR-0002 P1/P2/P3）。
+"""条抽出（ADR-0002 parse-unit-def/parse-nested-bullets/parse-unit-hash）。
 
 classify_lines の結果から「条（rule unit）」を抽出する。
 条の種別: bullet / numbered / paragraph / table_row / import。
 - bullet・numbered は全項目が条。子は別条で parent 参照を持つ
-  （親の隔離は子孫を含む＝P2 包含）
+  （親の隔離は子孫を含む＝parse-nested-bullets 包含）
 - 表は行単位の条。ヘッダ行・区切り行は条にしない（文脈）
 - 独立段落は見出し直下の連続した TEXT 行ブロック
 - import は行頭 @ の参照行
@@ -31,7 +31,7 @@ class RuleUnit:
     children: list[int] = field(default_factory=list)
 
     def norm_text(self) -> str:
-        """ADR-0002 P3: 空白・改行を正規化した条本文。"""
+        """ADR-0002 parse-unit-hash: 空白・改行を正規化した条本文。"""
         return " ".join(self.raw_text.split())
 
 

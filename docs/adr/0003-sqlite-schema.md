@@ -3,35 +3,35 @@
 - 日付: 2026-10-06
 - 状態: ドラフト（林さんレビュー待ち）
 - 記録者: Devin
-- 上位決定: ADR-0001 D3（推奨 vs 最終判断の記録）・D6（承認ステータス・質問キュー）・D7（管理対象＝エージェント概念）
+- 上位決定: ADR-0001 req-gradual-automation（推奨 vs 最終判断の記録）・req-status-question（承認ステータス・質問キュー）・req-webapp-agent（管理対象＝エージェント概念）
 
 ## 目的
 
 条の承認ステータス・スコア・AI 推奨と最終判断の履歴・質問キューを
-SQLite に永続化する。D3 の「推奨精度の実測」と D6 の「暫定承認の追跡」が
+SQLite に永続化する。req-gradual-automation の「推奨精度の実測」と req-status-question の「暫定承認の追跡」が
 このスキーマの存在理由。
 
 ## 用語
 
 | 用語 | 意味 |
 |---|---|
-| status の値 | `approved`=承認済み / `provisional_ai`=暫定 AI 承認 / `under_review`=審査中 / `quarantined`=隔離 / `rejected`=却下（ADR-0001 D6 と対応） |
+| status の値 | `approved`=承認済み / `provisional_ai`=暫定 AI 承認 / `under_review`=審査中 / `quarantined`=隔離 / `rejected`=却下（ADR-0001 req-status-question と対応） |
 | `decided_by` の `ai:<model>` | AI による判断。コロンの後にモデル識別子を入れる（例: `ai:gpt-5`）。人間は `human` |
 | score_runs / score_details | 採点 AI による 1 回の採点実行と、その評価項目別の内訳 |
-| criteria | 評価項目。合計 100 点になるよう重み付けする（ADR-0001 D2） |
-| 推奨精度 | recommendations（AI の推奨）と decisions（最終判断）の一致率。バイパスモード手動切替の参考材料（ADR-0001 D3・ADR-0005 O3） |
+| criteria | 評価項目。合計 100 点になるよう重み付けする（ADR-0001 req-contamination-score） |
+| 推奨精度 | recommendations（AI の推奨）と decisions（最終判断）の一致率。バイパスモード手動切替の参考材料（ADR-0001 req-gradual-automation・ADR-0005 op-bypass-manual） |
 | VIEW（`current_status`） | クエリを名前付きで保存した仮想テーブル。「各条の最新ステータス」を返す想定 |
 | UTC / ISO8601 | 協定世界時 / 日時表記の国際標準。DB は UTC で保存し、表示側で JST に変換する |
-| 暫定 AI 承認 | AI が推奨に基づき暫定的に承認した状態。**デフォルト経路**（ADR-0005 O1）。要確認一覧へ上げ、林さんの後確認を受ける |
+| 暫定 AI 承認 | AI が推奨に基づき暫定的に承認した状態。**デフォルト経路**（ADR-0005 op-proceed-default）。要確認一覧へ上げ、林さんの後確認を受ける |
 
 ## 設計方針
 
 - **ステータスは履歴テーブル**。最新行が現状態。変更理由と共に全履歴を残す
   （「いつ・誰が・なぜ」その状態にしたかを遡れるようにする）
-- **推奨と決定を別々に記録**し、一致率から推奨精度を算出する（D3）
+- **推奨と決定を別々に記録**し、一致率から推奨精度を算出する（req-gradual-automation）
 - **条の実体はハッシュ参照**。ファイル内容が変われば別条になるため、
   条テーブルは「現在のスナップショット」と「観測履歴」を分ける
-- 将来の複数拠点管理に備え、全データを `agent_id` ぶら下げにする（D7）
+- 将来の複数拠点管理に備え、全データを `agent_id` ぶら下げにする（req-webapp-agent）
 
 ## テーブル定義
 
@@ -66,17 +66,17 @@ CREATE TABLE rule_files (
 CREATE TABLE rule_units (
   id            INTEGER PRIMARY KEY,
   file_id       INTEGER NOT NULL REFERENCES rule_files(id),
-  content_hash  TEXT NOT NULL,           -- ADR-0002 P3: sha256(norm_text) 先頭16
+  content_hash  TEXT NOT NULL,           -- ADR-0002 parse-unit-hash: sha256(norm_text) 先頭16
   heading_path  TEXT NOT NULL,           -- 文脈（例 "核心ルール > 2. ..."）
   ordinal       INTEGER NOT NULL,        -- 同見出し内での出現順
-  parent_id     INTEGER REFERENCES rule_units(id),  -- 親 bullet（P2 包含用）
+  parent_id     INTEGER REFERENCES rule_units(id),  -- 親 bullet（parse-nested-bullets 包含用）
   kind          TEXT NOT NULL CHECK(kind IN
                   ('bullet','numbered','paragraph','table_row','import')),
   raw_text      TEXT NOT NULL,           -- 原文（改行含む）
   first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_seen_at  TEXT NOT NULL DEFAULT (datetime('now')),
   present       INTEGER NOT NULL DEFAULT 1,  -- 0=ファイルから消えた（編集/隔離済）
-  -- 条の実体キー（ADR-0002 P3: file+heading_path+hash）。再スキャンの二重登録防止。
+  -- 条の実体キー（ADR-0002 parse-unit-hash: file+heading_path+hash）。再スキャンの二重登録防止。
   -- 注意: 同じ見出しの下に全く同じ文の bullet が2つある場合は区別できない
   -- （実データで起きたら ordinal をキーに含める等の再検討）
   UNIQUE(file_id, content_hash, heading_path)
@@ -89,13 +89,13 @@ CREATE TABLE unit_succession (
   id           INTEGER PRIMARY KEY,
   prev_unit_id INTEGER NOT NULL REFERENCES rule_units(id),
   new_unit_id  INTEGER NOT NULL REFERENCES rule_units(id),
-  method       TEXT NOT NULL,            -- 'similarity' | 'rule_unit_trailer'（ADR-0004 C6）| 'sanitize'（ADR-0005 O10）
+  method       TEXT NOT NULL,            -- 'similarity' | 'rule_unit_trailer'（ADR-0004 commit-rule-unit-trailer）| 'sanitize'（ADR-0005 op-sanitize-restore）
   confidence   REAL,                     -- similarity の場合の類似度
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(prev_unit_id, new_unit_id)
 );
 
--- 出自（P5 の 2 系統を1テーブルで）
+-- 出自（parse-provenance の 2 系統を1テーブルで）
 CREATE TABLE provenance (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER NOT NULL UNIQUE REFERENCES rule_units(id),
@@ -117,12 +117,12 @@ CREATE TABLE status_history (
                ('approved','provisional_ai','under_review','quarantined','rejected')),
   decided_by TEXT NOT NULL CHECK(decided_by = 'human' OR decided_by LIKE 'ai:%'),
   reason     TEXT,
-  adr_ref    TEXT,                       -- 暫定承認の根拠 ADR パス（D6）
+  adr_ref    TEXT,                       -- 暫定承認の根拠 ADR パス（req-status-question）
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX idx_status_unit ON status_history(unit_id, id);  -- 最新行取得は id 順（補足参照）
 
--- 評価項目（合計100点、Web検索で定期更新。D2）
+-- 評価項目（合計100点、Web検索で定期更新。req-contamination-score）
 CREATE TABLE criteria (
   id          INTEGER PRIMARY KEY,
   name        TEXT NOT NULL,
@@ -138,10 +138,10 @@ CREATE TABLE criteria (
 CREATE TABLE score_runs (
   id            INTEGER PRIMARY KEY,
   unit_id       INTEGER NOT NULL REFERENCES rule_units(id),
-  scorer        TEXT NOT NULL CHECK(scorer LIKE 'ai:%'),  -- 採点AI識別子（交代可・D8）
+  scorer        TEXT NOT NULL CHECK(scorer LIKE 'ai:%'),  -- 採点AI識別子（交代可・req-ai-gateway）
   model_version TEXT,
   total_score   INTEGER NOT NULL CHECK(total_score BETWEEN 0 AND 100),
-  rationale     TEXT NOT NULL,           -- 人が検査できる採点根拠（D2）
+  rationale     TEXT NOT NULL,           -- 人が検査できる採点根拠（req-contamination-score）
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE score_details (
@@ -153,7 +153,7 @@ CREATE TABLE score_details (
   UNIQUE(score_run_id, criterion_id)     -- 同一項目の二重採点を防ぐ
 );
 
--- 推奨 vs 最終判断（D3 精度実測の根拠）
+-- 推奨 vs 最終判断（req-gradual-automation 精度実測の根拠）
 CREATE TABLE recommendations (
   id            INTEGER PRIMARY KEY,
   unit_id       INTEGER NOT NULL REFERENCES rule_units(id),
@@ -174,7 +174,7 @@ CREATE TABLE decisions (
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 林質問キュー（D6: 1問ずつ・平易・タイムアウト付き・明示依頼時のみ O1）
+-- 林質問キュー（req-status-question: 1問ずつ・平易・タイムアウト付き・明示依頼時のみ op-proceed-default）
 CREATE TABLE questions (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER REFERENCES rule_units(id),  -- 関係する条（あれば）
@@ -188,13 +188,13 @@ CREATE TABLE questions (
   answered_at TEXT
 );
 
--- 暫定承認の記録（いつ・なぜ暫定承認したか。ADR-0005 O4/O6）
+-- 暫定承認の記録（いつ・なぜ暫定承認したか。ADR-0005 op-add-provisional/op-provisional-adr-warden）
 CREATE TABLE provisional_records (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER NOT NULL REFERENCES rule_units(id),
   question_id INTEGER REFERENCES questions(id),  -- 関連した質問（あれば）
   request_ref TEXT NOT NULL,             -- 元の依頼の識別
-  adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR（warden 側・O6）
+  adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR（warden 側・op-provisional-adr-warden）
   reason      TEXT,                      -- なぜ暫定承認したか（一覧表示用）
   outcome     TEXT CHECK(outcome IN ('confirmed','reverted','modified')),
   confirmed_at TEXT,                     -- 林さんが確認した日時（NULL=未確認）
@@ -204,7 +204,7 @@ CREATE TABLE provisional_records (
   CHECK((outcome IS NULL) = (confirmed_at IS NULL))
 );
 
--- 追加フロー: Forgejo PR と審査（D5）
+-- 追加フロー: Forgejo PR と審査（req-pr-review）
 CREATE TABLE pull_requests (
   id           INTEGER PRIMARY KEY,
   agent_id     INTEGER NOT NULL REFERENCES agents(id),
@@ -235,13 +235,13 @@ CREATE TABLE proposed_units (
 CREATE TABLE reviews (
   id          INTEGER PRIMARY KEY,
   pr_id       INTEGER NOT NULL REFERENCES pull_requests(id),
-  reviewer    TEXT NOT NULL CHECK(reviewer LIKE 'ai:%'),  -- 審査AI識別子（採点AIと別系統・D5）
+  reviewer    TEXT NOT NULL CHECK(reviewer LIKE 'ai:%'),  -- 審査AI識別子（採点AIと別系統・req-pr-review）
   verdict     TEXT CHECK(verdict IN ('approve','request_changes','escalate')),
   comment     TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- AI プロファイル（ADR-0005 O7: 採点・審査の別系統＋期限切れ監視）
+-- AI プロファイル（ADR-0005 op-ai-separate: 採点・審査の別系統＋期限切れ監視）
 CREATE TABLE ai_profiles (
   id             INTEGER PRIMARY KEY,
   role           TEXT NOT NULL CHECK(role IN ('scorer','reviewer')),
@@ -253,7 +253,7 @@ CREATE TABLE ai_profiles (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 運用設定（ADR-0005 O3: バイパスモード等の手動切替）
+-- 運用設定（ADR-0005 op-bypass-manual: バイパスモード等の手動切替）
 CREATE TABLE settings (
   key        TEXT PRIMARY KEY,          -- 例: 'bypass_mode'
   value      TEXT NOT NULL,             -- 例: 'on' | 'off'
@@ -282,8 +282,8 @@ CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
 
 ```
 （新規条）        → under_review
-（暫定追加）      → provisional_ai          -- 先行追加（D6）
-under_review     → provisional_ai          -- デフォルト経路（ADR-0005 O1）
+（暫定追加）      → provisional_ai          -- 先行追加（req-status-question）
+under_review     → provisional_ai          -- デフォルト経路（ADR-0005 op-proceed-default）
 under_review     → approved | rejected | quarantined
 provisional_ai   → approved | rejected | quarantined   -- 林さんの確認結果
 approved         → quarantined | under_review          -- 再審査
@@ -297,7 +297,7 @@ rejected         → under_review                        -- 再申請
   同じトランザクションで書く（最終判断＝新しい状態）
 - AI が単独で判断を確定するのは `provisional_ai` への遷移のみ。
   それ以外の状態遷移で `decided_by` が `ai:*` の行は監査上「要確認」
-- 例外: AI は `quarantined` へも自動遷移してよい（ADR-0005 O9 で正式決定。
+- 例外: AI は `quarantined` へも自動遷移してよい（ADR-0005 op-auto-quarantine で正式決定。
   ルールを外す方向は無害・復元可能。汚染量が手作業を超えている）。
   これも要確認一覧に載せる
 
@@ -308,28 +308,28 @@ rejected         → under_review                        -- 再申請
 - **イベントの順序**: `created_at` は秒精度なので、同一秒の順序は
   `id` 順で判断する（全テーブル共通）
 - **隔離中の条の物理位置**: `quarantine/<file>/<content_hash>.md`
-  （ADR-0002 P6）から導出できるので列は持たない。
+  （ADR-0002 parse-quarantine-format）から導出できるので列は持たない。
   隔離・復元の操作自体は audit_log に記録する
 - **「1 問ずつ」はスキーマでは強制しない**: questions に pending が
   複数できても構造上は許容する。同時に出す質問を 1 つに絞るのは
   アプリ層（QuestionQueue）の責務
 - **提案条は採点対象外**: `score_runs` は `rule_units`（ファイルに
   存在する条）のみ。`proposed_units` は審査 AI のレビューで評価する
-  設計（D5 は採点 AI ではなく審査 AI の領分）
+  設計（req-pr-review は採点 AI ではなく審査 AI の領分）
 - **要確認一覧**: `provisional_records.confirmed_at IS NULL` の条 ＋
   `status=provisional_ai` の条を、直近 `score_runs` の点数順に並べる
-  （ADR-0005 O2）。`rules_junrule.md` の準ルールも同じ一覧に
-  union 表示する（ファイル側の条はパーサが抽出・O8。危険度ソートを
+  （ADR-0005 op-reviewlist-riskorder）。`rules_junrule.md` の準ルールも同じ一覧に
+  union 表示する（ファイル側の条はパーサが抽出・op-junrule-unified-list。危険度ソートを
   効かせるため準ルール条も採点する・仮の決定）
 - **書き換えられた条**: 新 hash で別条として登場し、旧条の承認を
-  引き継がない（ADR-0005 O5）。新旧の対応は unit_succession に
+  引き継がない（ADR-0005 op-rewrite-recheck）。新旧の対応は unit_succession に
   記録するだけ（追跡用）
 - **条が編集で別条になった場合**: 旧 `rule_units.present=0`、新条が新 id で登場。
-  ステータスは**一切引き継がない**（ADR-0005 O5）。新条は新規条として
+  ステータスは**一切引き継がない**（ADR-0005 op-rewrite-recheck）。新条は新規条として
   under_review → 採点 → provisional_ai のデフォルト経路を通る。
   対応付けロジック（ADR-0002 未決事項と連動）は unit_succession への
   記録だけに使い、追跡専用とする
-- **サニタイズ復元（ADR-0005 O10）**: 隔離中の条は `quarantined` のまま
+- **サニタイズ復元（ADR-0005 op-sanitize-restore）**: 隔離中の条は `quarantined` のまま
   quarantine/ に残り、サニタイズ版が別条（新 hash）としてファイルに
   戻る。新旧の対応は `unit_succession.method='sanitize'` で記録し、
   整え前後の差分を一覧で比較できるようにする
@@ -339,9 +339,9 @@ rejected         → under_review                        -- 再申請
 
 ## 未決の細部
 
-- ~~推奨精度の閾値~~ → ADR-0005 O3（閾値を設けない。手動 ON/OFF。
+- ~~推奨精度の閾値~~ → ADR-0005 op-bypass-manual（閾値を設けない。手動 ON/OFF。
   `settings.bypass_mode` に格納）
-- ~~succession の対応付け~~ → ADR-0005 O5（記録のみ。引き継ぎなし）
+- ~~succession の対応付け~~ → ADR-0005 op-rewrite-recheck（記録のみ。引き継ぎなし）
 - 質問タイムアウトの初期値 → 仮の決定（ADR-0005。運用で調整）
 - 状態遷移の強制場所 → 仮の決定（アプリ層）
 - PR 適用のトランザクション境界 → 仮の決定（適用処理設計時）

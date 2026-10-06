@@ -1,7 +1,7 @@
 """設定層。
 
 管理対象（エージェント）のルート・隔離先・DB パスを一箇所で定義する。
-将来の複数管理対象（ADR-0001 D7）に備えて AgentConfig を分離する。
+将来の複数管理対象（ADR-0001 req-webapp-agent）に備えて AgentConfig を分離する。
 """
 
 from __future__ import annotations
@@ -51,5 +51,5 @@ class Config:
 
     @property
     def adr_dir(self) -> Path:
-        """暫定承認の根拠記録（warden 側・ADR-0005 O6）。"""
+        """暫定承認の根拠記録（warden 側・ADR-0005 op-provisional-adr-warden）。"""
         return self.data_dir / "adr"
