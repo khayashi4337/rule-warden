@@ -15,6 +15,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from warden.parser_io import read_markdown
 from warden.parser_lines import at_refs, classify_lines
 
 
@@ -49,9 +50,8 @@ def _collect_refs(path: Path) -> list[str]:
     fence・HTML コメント・引用ブロック内の @ は P1 の除外規約どおり
     拾わない（コメント内の @ でファイルをロード扱いにしない）。
     """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    text = read_markdown(path)
+    if text is None:
         return []
     refs: list[str] = []
     for ln in classify_lines(text):

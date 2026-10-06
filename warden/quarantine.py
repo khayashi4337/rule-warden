@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from warden.parser_hash import content_hash
+from warden.parser_io import read_markdown
 from warden.parser_units import RuleUnit
 
 META_RE = re.compile(
@@ -97,12 +98,11 @@ def quarantine(
     if not units:
         result.error = "no units"
         return result
-    try:
-        text = src.read_text(encoding="utf-8")
-        lines = text.splitlines(keepends=True)
-    except OSError as e:
-        result.error = str(e)
+    text = read_markdown(src)
+    if text is None:
+        result.error = f"cannot read {rel_file}"
         return result
+    lines = text.splitlines(keepends=True)
 
     h = content_hash(units[0])
     qdir = Path(root) / "quarantine" / rel_file
@@ -187,10 +187,7 @@ def restore(
         result.error = "invalid quarantine file"
         return result
     src = Path(root) / meta["source"]
-    try:
-        lines = src.read_text(encoding="utf-8").splitlines(keepends=True)
-    except OSError:
-        lines = []
+    lines = (read_markdown(src) or "").splitlines(keepends=True)
 
     body = new_text if new_text is not None else meta["body"]
     if not body.endswith("\n"):
