@@ -1,4 +1,4 @@
-"""ロードグラフ構築（ADR-0002 parse-load-graph）。
+"""ロードグラフ構築（ADR-0002 P4）。
 
 起点 CLAUDE.md から @ 参照を辿り、実際にコンテキストへ注入される
 ファイル集合（loaded）を求める。@ 参照は行内の任意位置
@@ -47,7 +47,7 @@ def _resolve(ref: str, from_file: Path, root: Path) -> Path | None:
 def _collect_refs(path: Path) -> list[str]:
     """ファイル中の全 @ 参照（解析対象行のみ。表セル内も含む）。
 
-    fence・HTML コメント・引用ブロック内の @ は parse-unit-def の除外規約どおり
+    fence・HTML コメント・引用ブロック内の @ は P1 の除外規約どおり
     拾わない（コメント内の @ でファイルをロード扱いにしない）。
     """
     text = read_markdown(path)

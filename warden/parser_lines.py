@@ -1,4 +1,4 @@
-"""行分類器（ADR-0002 parse-unit-def/parse-load-graph）。
+"""行分類器（ADR-0002 P1/P4）。
 
 Markdown を行単位で分類する。解析しない範囲は
 コードフェンス内・HTML コメント内・引用テキスト。
@@ -63,7 +63,7 @@ _RE_IMPORT = re.compile(r"^\s*@")
 _RE_QUOTE = re.compile(r"^\s*>")
 _RE_QUOTE_LABEL = re.compile(r"^\s*\[[^\]]+\]\s*$")
 
-# @ 参照の抽出（行内の任意位置・表セル内も対象。ADR-0002 parse-load-graph）
+# @ 参照の抽出（行内の任意位置・表セル内も対象。ADR-0002 P4）
 _RE_AT_REF = re.compile(r"@([A-Za-z0-9_\-./\\぀-ヿ一-龥]{2,})")
 
 

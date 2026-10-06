@@ -1,4 +1,4 @@
-"""Forgejo REST API クライアント（stdlib のみ・PR フロー seq-proposal の F 部分）。
+"""Forgejo REST API クライアント（stdlib のみ・PR フロー S3 の F 部分）。
 
 認証情報は ~/.config/rule-warden/forgejo-admin.txt（user:/pass:/url: 行形式）
 から実行時に読む。値をコード・ログ・例外メッセージに出さない。

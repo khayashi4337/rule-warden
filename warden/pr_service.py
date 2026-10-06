@@ -1,4 +1,4 @@
-"""PR 適用フロー（ADR-0002.5 seq-proposal のローカル部分）。
+"""PR 適用フロー（ADR-0002.5 S3 のローカル部分）。
 
 提案（PullRequest + ProposedUnit の記録）→ 審査（Review）
 → 承認時の適用（ファイル書込 + 状態遷移 + merged）。
@@ -10,7 +10,7 @@
 - 適用は「state=open かつ最新 verdict=approve」のみ。
   add/modify でできた条は provisional_ai、remove は quarantined。
 
-Forgejo 上のブランチ・PR 作成（seq-proposal の GitClient 部分）は別段階。
+Forgejo 上のブランチ・PR 作成（S3 の GitClient 部分）は別段階。
 dry_run が既定。物理書き込みは dry_run=False のときだけ。
 """
 
@@ -241,7 +241,7 @@ def apply_pr(
     return stats
 
 
-# ---- Forgejo PR 作成（seq-proposal の GC/F 部分） ----
+# ---- Forgejo PR 作成（S3 の GC/F 部分） ----
 
 def _git(root: Path, *args: str, env: dict | None = None) -> str:
     r = subprocess.run(

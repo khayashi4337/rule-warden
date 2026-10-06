@@ -1,9 +1,9 @@
 """採点適用フロー（3c）。
 
 under_review の条を採点 AI に通し、結果に応じて状態を進める:
-- 危険（>= threshold）→ quarantined（op-auto-quarantine: AI 自動・復元可能方向）
+- 危険（>= threshold）→ quarantined（O9: AI 自動・復元可能方向）
   かつ root 指定時は物理隔離も行う
-- それ以外 → provisional_ai（op-add-provisional: いつ・なぜを provisional_records に記録）
+- それ以外 → provisional_ai（O4: いつ・なぜを provisional_records に記録）
 
 物理書き込みは dry_run=False かつ root 指定時のみ。
 """
