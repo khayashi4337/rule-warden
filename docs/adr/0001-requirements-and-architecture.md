@@ -103,6 +103,7 @@ flowchart TB
     subgraph Target["管理対象（.claude / git管理済み）"]
         CLAUDE["CLAUDE.md 系列<br/>（有効ルール）"]
         QUAR["隔離フォルダ<br/>（非読込・git管理内）"]
+        JUN["rules_junrule.md<br/>準ルール（人の手動管理・非読込）"]
     end
 
     subgraph External["外部"]
@@ -120,6 +121,7 @@ flowchart TB
     API --> GITC
     RE --> CLAUDE
     RE --> QUAR
+    RE -->|一覧用に条を抽出（O8）| JUN
     SCORE -->|MCP/API トークン認証| SAI
     SCORE --> WEB
     REV -->|MCP/API トークン認証| RAI
@@ -131,7 +133,6 @@ flowchart TB
     API --> DB
     SCORE --> DB
     REV --> DB
-    QUE --> DB
 ```
 
 ## 未決の細部（設計・実装段階で決定）

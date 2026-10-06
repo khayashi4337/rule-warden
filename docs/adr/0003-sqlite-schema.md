@@ -19,10 +19,10 @@ SQLite に永続化する。D3 の「推奨精度の実測」と D6 の「暫定
 | `decided_by` の `ai:<model>` | AI による判断。コロンの後にモデル識別子を入れる（例: `ai:gpt-5`）。人間は `human` |
 | score_runs / score_details | 採点 AI による 1 回の採点実行と、その評価項目別の内訳 |
 | criteria | 評価項目。合計 100 点になるよう重み付けする（ADR-0001 D2） |
-| 推奨精度 | recommendations（AI の推奨）と decisions（最終判断）の一致率。バイパスモード移行の判定材料（ADR-0001 D3） |
+| 推奨精度 | recommendations（AI の推奨）と decisions（最終判断）の一致率。バイパスモード手動切替の参考材料（ADR-0001 D3・ADR-0005 O3） |
 | VIEW（`current_status`） | クエリを名前付きで保存した仮想テーブル。「各条の最新ステータス」を返す想定 |
 | UTC / ISO8601 | 協定世界時 / 日時表記の国際標準。DB は UTC で保存し、表示側で JST に変換する |
-| 暫定 AI 承認 | 林さん不在時に AI が暫定的に承認した状態。戻ったときに要確認一覧へ上げる（ADR-0001 D6） |
+| 暫定 AI 承認 | AI が推奨に基づき暫定的に承認した状態。**デフォルト経路**（ADR-0005 O1）。要確認一覧へ上げ、林さんの後確認を受ける |
 
 ## 設計方針
 
@@ -174,7 +174,7 @@ CREATE TABLE decisions (
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 林質問キュー（D6: 1問ずつ・平易・タイムアウト付き）
+-- 林質問キュー（D6: 1問ずつ・平易・タイムアウト付き・明示依頼時のみ O1）
 CREATE TABLE questions (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER REFERENCES rule_units(id),  -- 関係する条（あれば）
@@ -188,11 +188,11 @@ CREATE TABLE questions (
   answered_at TEXT
 );
 
--- 暫定承認の記録（不在時に先行追加した経緯。D6）
+-- 暫定承認の記録（いつ・なぜ暫定承認したか。ADR-0005 O4/O6）
 CREATE TABLE provisional_records (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER NOT NULL REFERENCES rule_units(id),
-  question_id INTEGER REFERENCES questions(id),  -- タイムアウトした質問
+  question_id INTEGER REFERENCES questions(id),  -- 関連した質問（あれば）
   request_ref TEXT NOT NULL,             -- 元の依頼の識別
   adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR（warden 側・O6）
   reason      TEXT,                      -- なぜ暫定承認したか（一覧表示用）
@@ -257,7 +257,8 @@ CREATE TABLE ai_profiles (
 CREATE TABLE settings (
   key        TEXT PRIMARY KEY,          -- 例: 'bypass_mode'
   value      TEXT NOT NULL,             -- 例: 'on' | 'off'
-  updated_by TEXT NOT NULL,             -- 'human' 想定
+  updated_by TEXT NOT NULL              -- 'human' 想定
+             CHECK(updated_by = 'human' OR updated_by LIKE 'ai:%'),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -320,8 +321,10 @@ rejected         → under_review                        -- 再申請
   引き継がない（ADR-0005 O5）。新旧の対応は unit_succession に
   記録するだけ（追跡用）
 - **条が編集で別条になった場合**: 旧 `rule_units.present=0`、新条が新 id で登場。
-  ステータスの引き継ぎは「同 file+heading_path で content_hash が近い」
-  対応付け後に行う（対応付けロジックは ADR-0002 未決事項と連動）
+  ステータスは**一切引き継がない**（ADR-0005 O5）。新条は新規条として
+  under_review → 採点 → provisional_ai のデフォルト経路を通る。
+  対応付けロジック（ADR-0002 未決事項と連動）は unit_succession への
+  記録だけに使い、追跡専用とする
 - **criteria の改版**: `active_to` を立てて差し替え。過去スコアとの
   比較可能性を保つため項目を物理削除しない
 - SQLite の日時は UTC ISO8601 文字列（`datetime('now')`）。表示側で JST 変換
