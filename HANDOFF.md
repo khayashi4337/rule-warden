@@ -20,29 +20,29 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 初期設定は完了。Forgejo 管理ユーザ warden-admin と private リポジトリ
 warden-admin/claude-rules（.claude 全ブランチ push 済み）、
 warden-admin/rule-warden（本リポジトリのバックアップ）作成済み。
-実装着手済み: フェーズ 0a 完了（Python 3.12・stdlib。`warden/` パッケージ・
-unittest 基盤・CLI 骨格。`python -m unittest discover -s tests` で 4 テスト通過）
-ADR-0005 で運用方針が確定（デフォルト暫定承認・要確認は危険度順・バイパスは手動・
-準ルールと隔離は分離保持し統合一覧・自動隔離可・復元はサニタイズ版・
-修正削除も暫定取込）。ADR-0002〜0004 はドラフト。実装は未着手。
+ADR-0005 で運用方針が確定（O1〜O11）。
 
-「仮の決定」の解消プラン（実装フェーズと対応付け）:
-- フェーズ0: 言語・スタック決定（全ての前提。パーサー実装前に決める）
-- フェーズ1: パーサー実装（ADR-0002）→ Rule-Unit trailer 自動挿入、
-  非ロード棚卸し、succession 対応付け手順、RuleEngine ロールバックを解消
-- フェーズ2: WardenStore + Orchestrator 実装（ADR-0003/0002.5）→
-  状態遷移のアプリ層強制、PR 適用のトランザクション境界、
-  質問タイムアウト初期値、Orchestrator 依存形を解消
-- フェーズ3: AiGateway 実装 → MCP or API 選定、ai_profiles への
-  scorer/reviewer モデル登録（別系統・契約済み）、期限監視を解消
-- フェーズ4: Web UI 実装 → 統合一覧（union・危険度ソート）、
-  bypass_mode 切替 UI を解消
+実装: フェーズ 0a・1a〜1e・2a〜2d・3a〜3c・4a〜4c・5a 完了（計画の残は 5b のみ）。
+- Python 3.12・stdlib のみ（外部依存ゼロ）。テスト 83 件通過
+- モジュール: parser_lines/units/hash/io, loadgraph, quarantine,
+  provenance, schema/store, transitions, orchestrator, ai_gateway,
+  scoring_service, webapp
+- CLI: `python -m warden scan|list|serve` 実装済み（apply は未接続）
+- 条管理の対象範囲: ルート *.md + skills/ agents/ commands/ .agents/
+  （全 rglob=1455 件で 5 分超 → 127 件に限定して数秒）
+- 実測リハーサル（5a、コピー data/rehearsal/claude-copy 上）:
+  127 ファイル・5,542 条スキャン → モック採点で 5,516 条 provisional_ai、
+  26 条 quarantined（物理隔離も検証済み）
+- 注意: MockGateway はキーワード一致の疑似採点のため誤検出あり
+  （「Never Override...」のような禁止文も危険扱い）。本番採点は
+  契約 AI 接続後に精度評価が必要
 
 次の作業候補（林さんの指示を待ってから着手すること）:
-- .claude リポジトリに Forgejo リモートを追加して push（要号令）
-- フェーズ0: アプリの言語・スタック決定
-- ADR-0002/0003 のレビュー反映 → 承認
-- フェーズ1: パーサー実装（ADR-0002 準拠）
+- 5b 本番デコンタミ: 実 .claude への適用。物理的な大量隔離を伴うため
+  林さんの明示の号令＋本物の採点 AI（ai_profiles 登録）を待つ
+- apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
+- ADR-0002/0003/0004 のドラフト → 承認への状態更新
+- 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
 
 環境メモ（このマシン固有、実測済み 2026-10-06 更新）:
 - exec 既定の bash は C:\Windows\System32\bash.exe（WSL版）に解決され、出力なし終了コード1で失敗する
