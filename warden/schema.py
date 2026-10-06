@@ -4,7 +4,7 @@
 接続ごとに PRAGMA foreign_keys = ON が必須（WardenStore が実施）。
 """
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 DDL = """
 CREATE TABLE IF NOT EXISTS agents (
@@ -209,7 +209,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
   entity     TEXT NOT NULL,
   entity_id  INTEGER NOT NULL,
   payload    TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  -- 改竄検知用ハッシュチェーン（v2）: 前行の hash を含む sha256 先頭16。
+  -- 行の編集・削除・挿入で後続チェーンが壊れる → verify_audit_chain で検出。
+  -- DB は git 外（data/）なので、外部改竄はこの連鎖でしか見えない
+  entry_hash TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
 

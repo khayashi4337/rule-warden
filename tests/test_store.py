@@ -21,7 +21,7 @@ class TestStore(unittest.TestCase):
 
     def test_schema_version(self):
         v = self.st.conn.execute("PRAGMA user_version").fetchone()[0]
-        self.assertEqual(v, 1)
+        self.assertEqual(v, 2)
 
     def test_agent_upsert_idempotent(self):
         a2 = self.st.upsert_agent("local-claude", r"C:\Users\user\.claude")

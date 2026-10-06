@@ -26,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="実際にファイルを書き換える（既定は dry-run 表示のみ）")
     sub.add_parser("serve", help="Web UI サーバを起動する（オンデマンド）")
     sub.add_parser("watch", help="定例スキャン（変化時のみレポート出力）")
+    sub.add_parser("audit-verify",
+                   help="監査ログのハッシュチェーンを検証する（改竄検知）")
+    sub.add_parser("criteria",
+                   help="採点項目（criteria）を初期登録して一覧する")
 
     return p
 
@@ -94,6 +98,40 @@ def main(argv: list[str] | None = None) -> int:
                 for it in stats[key]:
                     print(f"  {key}: {it}")
             print(f"apply [{mode}]: done")
+        finally:
+            store.close()
+        return 0
+
+    if args.command == "audit-verify":
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        try:
+            res = store.verify_audit_chain()
+            if res["ok"]:
+                print(f"audit chain OK（{res['total']} 件）")
+                return 0
+            print(f"!! audit chain BROKEN: 最初の不一致 id={res['first_bad_id']}"
+                  f"（全 {res['total']} 件。DB 改竄の可能性）")
+            return 1
+        finally:
+            store.close()
+
+    if args.command == "criteria":
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        try:
+            from warden.criteria_seed import seed_criteria
+
+            n = seed_criteria(store)
+            store.commit()
+            rows = store.conn.execute(
+                "SELECT name, weight FROM criteria ORDER BY weight DESC"
+            ).fetchall()
+            for r in rows:
+                print(f"  {r['weight']:>3}  {r['name']}")
+            total = sum(r["weight"] for r in rows)
+            print(f"criteria: {len(rows)} 件・合計 weight={total}"
+                  + (f"（新規 {n} 件登録）" if n else "（変更なし）"))
         finally:
             store.close()
         return 0

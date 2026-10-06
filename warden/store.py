@@ -7,12 +7,22 @@
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from pathlib import Path
 
 from warden.parser_hash import content_hash
 from warden.parser_units import RuleUnit
 from warden.schema import DDL, SCHEMA_VERSION
+
+
+def _audit_entry_hash(prev: str, actor: str, action: str, entity: str,
+                      entity_id: int, payload: str | None,
+                      created_at: str) -> str:
+    """監査行の連鎖ハッシュ（sha256 先頭16）。prev は前行の entry_hash。"""
+    body = "|".join([prev, actor, action, entity, str(entity_id),
+                     payload or "", created_at])
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
 class WardenStore:
@@ -28,8 +38,28 @@ class WardenStore:
 
     def init_schema(self) -> None:
         self.conn.executescript(DDL)
+        self._migrate()
         self.conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.conn.commit()
+
+    def _migrate(self) -> None:
+        """user_version < 2: audit_log に entry_hash を追加し全行をバックフィル。"""
+        cols = {r[1] for r in self.conn.execute("PRAGMA table_info(audit_log)")}
+        if "entry_hash" not in cols:
+            self.conn.execute(
+                "ALTER TABLE audit_log ADD COLUMN entry_hash TEXT")
+            self._backfill_audit_chain()
+
+    def _backfill_audit_chain(self) -> None:
+        rows = self.conn.execute(
+            "SELECT * FROM audit_log ORDER BY id").fetchall()
+        prev = ""
+        for r in rows:
+            h = _audit_entry_hash(prev, r["actor"], r["action"], r["entity"],
+                                  r["entity_id"], r["payload"], r["created_at"])
+            self.conn.execute(
+                "UPDATE audit_log SET entry_hash=? WHERE id=?", (h, r["id"]))
+            prev = h
 
     def close(self) -> None:
         self.conn.close()
@@ -160,11 +190,33 @@ class WardenStore:
 
     def audit(self, actor: str, action: str, entity: str,
               entity_id: int, payload: str | None = None) -> None:
-        self.conn.execute(
+        prev = self.conn.execute(
+            "SELECT entry_hash FROM audit_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        prev_hash = prev["entry_hash"] if prev and prev["entry_hash"] else ""
+        row = self.conn.execute(
             "INSERT INTO audit_log (actor, action, entity, entity_id, payload) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?) RETURNING id, created_at",
             (actor, action, entity, entity_id, payload),
-        )
+        ).fetchone()
+        h = _audit_entry_hash(prev_hash, actor, action, entity, entity_id,
+                              payload, row["created_at"])
+        self.conn.execute(
+            "UPDATE audit_log SET entry_hash=? WHERE id=?", (h, row["id"]))
+
+    def verify_audit_chain(self) -> dict:
+        """監査チェーンの再計算検証。改竄・削除・挿入があれば先ず先頭の壊れを返す。"""
+        rows = self.conn.execute(
+            "SELECT * FROM audit_log ORDER BY id").fetchall()
+        prev = ""
+        for r in rows:
+            h = _audit_entry_hash(prev, r["actor"], r["action"], r["entity"],
+                                  r["entity_id"], r["payload"], r["created_at"])
+            if r["entry_hash"] != h:
+                return {"ok": False, "first_bad_id": r["id"],
+                        "total": len(rows)}
+            prev = h
+        return {"ok": True, "first_bad_id": None, "total": len(rows)}
 
     def commit(self) -> None:
         with self.lock:
