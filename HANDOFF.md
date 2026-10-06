@@ -16,16 +16,30 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 6. G:\prj2\rule-warden\docs\adr\0004-commit-message-rules.md （コミットメッセージルール・ドラフト）
 7. G:\prj2\rule-warden\docs\adr\0005-operation-decisions.md （ヒアリング確定の運用方針 O1〜O11＋仮の決定）
 
-状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動は完了。
+状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動・
+初期設定は完了。Forgejo 管理ユーザ warden-admin と private リポジトリ
+warden-admin/claude-rules を作成済み（.claude 側への push は未実施・要号令）。
 ADR-0005 で運用方針が確定（デフォルト暫定承認・要確認は危険度順・バイパスは手動・
 準ルールと隔離は分離保持し統合一覧・自動隔離可・復元はサニタイズ版・
 修正削除も暫定取込）。ADR-0002〜0004 はドラフト。実装は未着手。
 
+「仮の決定」の解消プラン（実装フェーズと対応付け）:
+- フェーズ0: 言語・スタック決定（全ての前提。パーサー実装前に決める）
+- フェーズ1: パーサー実装（ADR-0002）→ Rule-Unit trailer 自動挿入、
+  非ロード棚卸し、succession 対応付け手順、RuleEngine ロールバックを解消
+- フェーズ2: WardenStore + Orchestrator 実装（ADR-0003/0002.5）→
+  状態遷移のアプリ層強制、PR 適用のトランザクション境界、
+  質問タイムアウト初期値、Orchestrator 依存形を解消
+- フェーズ3: AiGateway 実装 → MCP or API 選定、ai_profiles への
+  scorer/reviewer モデル登録（別系統・契約済み）、期限監視を解消
+- フェーズ4: Web UI 実装 → 統合一覧（union・危険度ソート）、
+  bypass_mode 切替 UI を解消
+
 次の作業候補（林さんの指示を待ってから着手すること）:
-- Forgejo 初期設定（ブラウザで http://127.0.0.1:3300/ を開き管理者作成）+ .claude 用リポジトリ作成
+- .claude リポジトリに Forgejo リモートを追加して push（要号令）
+- フェーズ0: アプリの言語・スタック決定
 - ADR-0002/0003 のレビュー反映 → 承認
-- パーサー実装（ADR-0002 準拠。言語・スタックの決定を含む）
-- 採点AI・審査AI のモデル選定と連携方式（MCP or API）の検討
+- フェーズ1: パーサー実装（ADR-0002 準拠）
 
 環境メモ（このマシン固有、実測済み 2026-10-06 更新）:
 - exec 既定の bash は C:\Windows\System32\bash.exe（WSL版）に解決され、出力なし終了コード1で失敗する
