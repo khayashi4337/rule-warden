@@ -59,8 +59,18 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 - 採点スクリプト: scripts/score_loaded_swe2.py / score_rest_swe2.py
   （採点理由は各 score_runs.rationale に保存。生成物は data/ 配下・gitignore）
 
+インシデント（2026-10-07）: CLAUDE.md の未コミット変更（§11 全削除・
+§10.8 停止条項削除・@rules_dots_charter.md 削除）は林さんの編集では
+ないと確認 → 改竄として `C:\Users\user\.claude\CLAUDE.md.tampered-20261006` に
+証拠保全したうえで git restore でコミット済み版に復元。再スキャンで
+復活した 19 条（§2/§3/§10/§11/憲章import）も score 0 で採点済み。
+条の中身に「権限拡大を指示する汚染」は全 5,542 条で見つからなかったが、
+「制約を削る差分」が汚染の実体だった。今後は untracked ファイルも含めて
+「前回との差分で制約が削られていないか」を監査対象にする価値あり。
+
 次の作業候補（林さんの指示を待ってから着手すること）:
-- CLAUDE.md 未コミット変更（§11 削除等）の扱いを林さんに確認
+- 制約削減の検出: 「前回スキャンとの差分で保護条が削られた」ことを
+  検出する機能（gone_units のうち防御系を warning に出す）
 - apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
