@@ -1,0 +1,106 @@
+"""ロードグラフ構築（ADR-0002 P4）。
+
+起点 CLAUDE.md から @ 参照を辿り、実際にコンテキストへ注入される
+ファイル集合（loaded）を求める。@ 参照は行内の任意位置
+（表セル内を含む）から抽出する。
+
+- 到達可能 → loaded=True（有効ルール。汚染評価の対象）
+- 到達不能 → loaded=False（非ロード。準ルール等、別枠で一覧化）
+- 循環参照は visited 集合で打ち切り
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from warden.parser_lines import at_refs, classify_lines
+
+
+@dataclass
+class FileNode:
+    rel_path: str          # agent ルートからの相対パス（正規化済み・/ 区切り）
+    abs_path: Path
+    loaded: bool = False
+    refs: list[str] = field(default_factory=list)   # 抽出した @ パス（生）
+    cycle: bool = False
+
+
+def _resolve(ref: str, from_file: Path, root: Path) -> Path | None:
+    """@ 参照を実パスへ解決。相対は参照元ファイルのディレクトリ基準。"""
+    p = ref.strip()
+    if not p:
+        return None
+    if p.startswith("~"):
+        p = os.path.expanduser(p)
+    cand = Path(p)
+    if not cand.is_absolute():
+        cand = from_file.parent / cand
+    try:
+        return cand.resolve()
+    except OSError:
+        return None
+
+
+def _collect_refs(path: Path) -> list[str]:
+    """ファイル中の全 @ 参照（解析対象行のみ。表セル内も含む）。
+
+    fence・HTML コメント・引用ブロック内の @ は P1 の除外規約どおり
+    拾わない（コメント内の @ でファイルをロード扱いにしない）。
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    refs: list[str] = []
+    for ln in classify_lines(text):
+        if ln.parsed:
+            for r in at_refs(ln.raw):
+                if r not in refs:
+                    refs.append(r)
+    return refs
+
+
+def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode]:
+    """root 配下の全 .md について loaded フラグを返す。
+
+    quarantine/ 以下は隔離済みなのでロードグラフの対象外とする。
+    """
+    root = Path(root).resolve()
+    nodes: dict[str, FileNode] = {}
+
+    for f in sorted(root.rglob("*.md")):
+        rel = f.relative_to(root).as_posix()
+        if rel.startswith("quarantine/"):
+            continue
+        nodes[rel] = FileNode(rel_path=rel, abs_path=f)
+
+    visited: set[str] = set()
+
+    def dfs(rel: str) -> None:
+        node = nodes.get(rel)
+        if node is None:
+            return
+        if rel in visited:
+            node.cycle = True
+            return
+        visited.add(rel)
+        node.loaded = True
+        node.refs = _collect_refs(node.abs_path)
+        for ref in node.refs:
+            tgt = _resolve(ref, node.abs_path, root)
+            if tgt is None:
+                continue
+            try:
+                trel = tgt.relative_to(root).as_posix()
+            except ValueError:
+                continue  # 管理対象外への参照は辿らない
+            if trel in nodes:
+                dfs(trel)
+
+    entry_norm = entry.replace("\\", "/")
+    if entry_norm in nodes:
+        dfs(entry_norm)
+
+    return nodes
