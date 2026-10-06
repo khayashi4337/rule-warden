@@ -18,7 +18,10 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 
 状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動・
 初期設定は完了。Forgejo 管理ユーザ warden-admin と private リポジトリ
-warden-admin/claude-rules を作成済み（.claude 側への push は未実施・要号令）。
+warden-admin/claude-rules（.claude 全ブランチ push 済み）、
+warden-admin/rule-warden（本リポジトリのバックアップ）作成済み。
+実装着手済み: フェーズ 0a 完了（Python 3.12・stdlib。`warden/` パッケージ・
+unittest 基盤・CLI 骨格。`python -m unittest discover -s tests` で 4 テスト通過）
 ADR-0005 で運用方針が確定（デフォルト暫定承認・要確認は危険度順・バイパスは手動・
 準ルールと隔離は分離保持し統合一覧・自動隔離可・復元はサニタイズ版・
 修正削除も暫定取込）。ADR-0002〜0004 はドラフト。実装は未着手。

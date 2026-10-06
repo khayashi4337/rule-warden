@@ -15,17 +15,19 @@
 
 ### 0a. プロジェクト骨格（言語確定込み）
 
-- [ ] 0a.1 `src/warden/` パッケージ作成（`__init__.py`・`__main__.py`）
-- [ ] 0a.2 `tests/` 作成・`unittest` が走る最小テストを書く
-- [ ] 0a.3 `config.py`: 管理対象ルート（`C:\Users\user\.claude`）・DB パス・
+- [x] 0a.1 `warden/` パッケージ作成（`__init__.py`・`__main__.py`。
+      ※計画では `src/warden/` だが、インストール不要で `python -m warden`
+      が動くようリポジトリ直下に置いた）
+- [x] 0a.2 `tests/` 作成・`unittest` が走る最小テストを書く
+- [x] 0a.3 `config.py`: 管理対象ルート（`C:\Users\user\.claude`）・DB パス・
        quarantine パスを読む設定層
-- [ ] 0a.4 `logging` 設定（監査用に行動ログを残す形）
-- [ ] 0a.5 `.gitignore`: `__pycache__`、`*.db`、`secrets/`
-- [ ] 0a.6 CLI エントリ骨格（`python -m warden scan|list|apply` の空実装）
-- [ ] 0a.7 ADR 未決に「Python 3.12・stdlib のみ」を確定値として記録
-- [ ] 0a.8 HANDOFF にフェーズ 0 着手を記録
-- [ ] 0a.9 動作確認（`python -m warden` がヘルプを出す）
-- [ ] 0a.10 コミット + push
+- [x] 0a.4 `logging` 設定（監査用に行動ログを残す形）
+- [x] 0a.5 `.gitignore`: `__pycache__`、`*.db`、`secrets/`
+- [x] 0a.6 CLI エントリ骨格（`python -m warden scan|list|apply` の空実装）
+- [x] 0a.7 ADR 未決に「Python 3.12・stdlib のみ」を確定値として記録
+- [x] 0a.8 HANDOFF にフェーズ 0 着手を記録
+- [x] 0a.9 動作確認（`python -m warden` がヘルプを出す）
+- [x] 0a.10 コミット + push
 
 ## フェーズ 1: パーサー（ADR-0002）
 
