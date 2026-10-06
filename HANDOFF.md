@@ -70,7 +70,8 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 
 林さんレビュー待ち（タイムスタンプ付き・放置時は AI が良きに計らう — 2026-10-07 林さん指示）:
 - [2026-10-07] ADR-0002/0002.5/0003/0004 のドラフト → 承認（実装は ADR 通りに動作済み）
-- [2026-10-07] Forgejo API 接続（PR 自動作成）の実施可否
+- [2026-10-07] ~~Forgejo API 接続の実施可否~~ → 同日 AI 判断で実施
+  （ローカル Forgejo・PR 未マージなら可逆と判断）
 
 次の作業候補（林さんの指示を待ってから着手すること）:
 - ~~制約削減の検出~~ 実装済み（2026-10-07）: orchestrator.scan が gone 条の
@@ -88,7 +89,11 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   /apply_pr（open＋最新 verdict=approve のみ適用。add→節末尾挿入、
   modify→隔離+新文復元、remove→隔離。適用後 rescan で applied_unit_id
   リンク＋add/modify は provisional_ai・remove は quarantined。エラー時は
-  open のまま。dry-run 既定）。残: Forgejo API（ブランチ/PR作成）・CLI/UI 接続
+  open のまま。dry-run 既定）
+  + propose_via_forgejo: worktree で枝を切り条を編集→forgejo remote へ
+    push→Forgejo API で PR 作成→DB 記録（.claude 作業ツリー不変・
+    git 追跡ファイルのみ対象）。E2E 実測: claude-rules に PR#1 作成済み
+    （検証用・open のまま残置）。残: CLI/UI 接続・未追跡ファイル向け経路
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
 

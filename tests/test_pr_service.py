@@ -4,7 +4,14 @@ from pathlib import Path
 
 from warden.orchestrator import scan
 from warden.parser_io import read_markdown
-from warden.pr_service import apply_pr, create_pr, record_review, set_pr_state
+from warden.parser_units import extract_units
+from warden.pr_service import (
+    _remove_unit_lines,
+    apply_pr,
+    create_pr,
+    record_review,
+    set_pr_state,
+)
 from warden.store import WardenStore
 
 
@@ -110,6 +117,15 @@ class TestPrService(unittest.TestCase):
         stats = apply_pr(self.st, pr_id, self.root, dry_run=True)
         self.assertEqual(len(stats["added"]), 1)
         self.assertNotIn("- 条D", read_markdown(self.root / "CLAUDE.md"))
+
+    def test_remove_unit_lines(self):
+        """worktree 編集用: 条の行範囲を隔離保存なしで除去する。"""
+        p = self.root / "X.md"
+        p.write_text("- 条A\n- 条B\n- 条C\n", encoding="utf-8")
+        units = extract_units(read_markdown(p))
+        _remove_unit_lines(p, units, 1)
+        self.assertEqual(read_markdown(p).replace("\r\n", "\n"),
+                         "- 条A\n- 条C\n")
 
     def test_error_keeps_open(self):
         # 実在する条だが content_hash を壊して「ファイルに無い」状態にする

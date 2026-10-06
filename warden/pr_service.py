@@ -17,14 +17,20 @@ dry_run が既定。物理書き込みは dry_run=False のときだけ。
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
+import tempfile
+import time
 from pathlib import Path
 
+from warden.forgejo_client import ForgejoClient
 from warden.orchestrator import scan
 from warden.parser_io import read_markdown
 from warden.parser_units import extract_units
 from warden.quarantine import (
     _atomic_write,
+    _merged_ranges,
     quarantine,
     restore,
     with_descendants,
@@ -33,6 +39,10 @@ from warden.scoring_service import find_unit_by_hash
 from warden.store import WardenStore
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+")
+DEFAULT_ASKPASS = (
+    Path(__file__).resolve().parent.parent
+    / "scripts" / "git-askpass-forgejo.cmd"
+)
 
 
 def create_pr(
@@ -229,3 +239,103 @@ def apply_pr(
                             "merged": not stats["errors"]}))
     store.commit()
     return stats
+
+
+# ---- Forgejo PR 作成（S3 の GC/F 部分） ----
+
+def _git(root: Path, *args: str, env: dict | None = None) -> str:
+    r = subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True, capture_output=True, text=True, env=env,
+    )
+    return r.stdout
+
+
+def _remove_unit_lines(path: Path, units: list, idx: int) -> None:
+    """units[idx]+子孫 の行範囲をファイルから削除（隔離保存なし版）。"""
+    lines = (read_markdown(path) or "").splitlines(keepends=True)
+    ranges = _merged_ranges(with_descendants(units, idx))
+    _atomic_write(path, "".join(
+        line for i, line in enumerate(lines, start=1)
+        if not any(s <= i <= e for s, e in ranges)))
+
+
+def propose_via_forgejo(
+    store: WardenStore,
+    agent_id: int,
+    root: Path,
+    repo: str,
+    units: list[dict],
+    title: str,
+    body: str = "",
+    base_branch: str = "main",
+    proposer: str = "ai:proposer",
+    remote: str = "forgejo",
+    askpass: Path | None = DEFAULT_ASKPASS,
+) -> dict:
+    """提案条を worktree 上で編集→push→Forgejo PR 作成→DB 記録。
+
+    対象ファイルは git 追跡済みのみ（未追跡ファイルは PR 化不可）。
+    作業ツリーの .claude は触らない（worktree 隔離）。
+    """
+    root = Path(root)
+    untracked = [u["file_path"] for u in units
+                 if not _git(root, "ls-files", "--",
+                             u["file_path"]).strip()]
+    if untracked:
+        raise ValueError(
+            f"git 未追跡のため PR 化不可: {sorted(set(untracked))}")
+
+    branch = f"warden/pr-{int(time.time())}"
+    with tempfile.TemporaryDirectory() as wt:
+        _git(root, "worktree", "add", wt, "-b", branch)
+        try:
+            touched = set()
+            for u in units:
+                touched.add(u["file_path"])
+                if u["action"] == "add":
+                    _insert_text(Path(wt), u["file_path"],
+                                 u.get("heading_path"), u["raw_text"],
+                                 dry_run=False)
+                    continue
+                t = store.conn.execute(
+                    "SELECT ru.content_hash FROM rule_units ru "
+                    "WHERE ru.id = ?", (u["target_unit_id"],)).fetchone()
+                if t is None:
+                    raise ValueError(
+                        f"target_unit {u['target_unit_id']} not found")
+                f = Path(wt) / u["file_path"]
+                found = find_unit_by_hash(f, t["content_hash"])
+                if found is None:
+                    raise ValueError(
+                        f"target unit {u['target_unit_id']} not in file")
+                i, tu = found
+                all_units = extract_units(read_markdown(f) or "")
+                heading = u.get("heading_path") or tu.heading_path
+                _remove_unit_lines(f, all_units, i)
+                if u["action"] == "modify":
+                    _insert_text(Path(wt), u["file_path"], heading,
+                                 u["raw_text"], dry_run=False)
+            env = dict(os.environ)
+            if askpass is not None:
+                env["GIT_ASKPASS"] = str(askpass)
+            _git(Path(wt), "add", "--", *sorted(touched))
+            _git(Path(wt), "-c", "credential.helper=",
+                 "-c", "user.name=rule-warden",
+                 "-c", "user.email=warden@localhost",
+                 "commit", "-m", title)
+            _git(Path(wt), "-c", "credential.helper=",
+                 "push", remote, branch, env=env)
+        finally:
+            _git(root, "worktree", "remove", "--force", wt)
+            _git(root, "branch", "-D", branch)
+
+    pr = ForgejoClient().create_pull_request(
+        repo, branch, base_branch, title, body)
+    pr_id = create_pr(store, agent_id, proposer, repo, pr["number"], units)
+    store.audit(proposer, "forgejo_pr_created", "pull_request", pr_id,
+                json.dumps({"branch": branch, "url": pr["html_url"]},
+                           ensure_ascii=False))
+    store.commit()
+    return {"pr_id": pr_id, "number": pr["number"],
+            "url": pr["html_url"], "branch": branch}
