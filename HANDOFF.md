@@ -38,13 +38,29 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   契約 AI 接続後に精度評価が必要
 
 5b 実施済み（2026-10-07、林さん号令）: 実 .claude に採点適用。
-5,535 条 provisional_ai・7 条 quarantined（C:\Users\user\.claude\quarantine\ に
-物理退避済み）。ただし採点はモックのため 7 条は全部誤検出の見込み
-（"Safety First" 優先順位・「規約が優先する」記述など。要確認一覧から
-revert で復元可）。本格運用には契約 AI の ai_profiles 登録が必要。
+モック採点による誤隔離 7 件は scripts/restore_quarantined.py で全件復元済み。
+
+5b続き（2026-10-07、林さん「あなたの採点でいいよ」許可）: ai:swe-2 による
+文脈採点を全 5,542 条に実施・score_runs/recommendations に永続化。
+- ロード済み 96 条: 全文精読。0×84 / 5×7 / 10×2 / 15×3。隔離基準(60)超え 0 件
+- ルート直下 662 条: 全文精読。すべて始末書・憲章・SuperClaude 参照・
+  準ルール置き場で権限拡大指示なし
+- サブツリー 4,784 条: 権限拡大キーワード走査のヒット 242 件を全文精読
+  （すべて否定文・境界規定・参照文書）＋ファイル単位判定。
+  個別注意値は憲章の自律 merge 条（#2833-2835, 15）、skill-sommelier
+  自動収集/ルーティング（#3570/#3600, 10）、remote-mode 確認迂回
+  （10）、ux-five-planes 止まらない条（#5387, 10）
+- 結果: quarantined 0 件。provisional_ai 5,535、approved 7（復元分）
+- 重要な観測: 作業ツリーの CLAUDE.md は未コミット変更で §11（すり替え
+  禁止・権限行使を控える、2026-10-05 林さん追加）・§10.8 の Codex 停止条項・
+  @rules_dots_charter.md が削除・弱体化されている。採点対象としての
+  「権限拡大を指示する条」は見つからなかったが、ガードレールを削る
+  変更が差分として存在する。誰の編集かは git からは断定不可。林さん報告済み
+- 採点スクリプト: scripts/score_loaded_swe2.py / score_rest_swe2.py
+  （採点理由は各 score_runs.rationale に保存。生成物は data/ 配下・gitignore）
 
 次の作業候補（林さんの指示を待ってから着手すること）:
-- 隔離 7 件の revert / 復元（要確認一覧または quarantine メタから）
+- CLAUDE.md 未コミット変更（§11 削除等）の扱いを林さんに確認
 - apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
