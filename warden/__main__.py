@@ -34,7 +34,31 @@ def main(argv: list[str] | None = None) -> int:
         build_parser().print_help()
         return 0
 
-    # 各サブコマンドの実体はフェーズ 1〜4 で実装する
+    from warden.orchestrator import review_list, scan
+    from warden.store import WardenStore
+
+    if args.command in ("scan", "list"):
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        try:
+            if args.command == "scan":
+                stats = scan(store, config.agent.name, config.agent.root)
+                print(f"scan: {stats}")
+            else:
+                items = review_list(store)
+                for it in items:
+                    print(
+                        f"[{it['status']}] score={it['score']} "
+                        f"{it['path']} :: {it['heading_path']} :: "
+                        f"{it['raw_text'][:60]}"
+                    )
+                print(f"{len(items)} item(s)")
+        finally:
+            store.close()
+        return 0
+
+    # apply / serve はフェーズ 3〜4 で実装
     print(f"[not implemented] {args.command} (db={config.db_path})")
     return 0
 

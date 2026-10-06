@@ -129,11 +129,22 @@ class WardenStore:
         reason: str | None = None,
         adr_ref: str | None = None,
     ) -> None:
+        """状態遷移を検査してから status_history に追記する。
+
+        AI による非自動遷移（provisional_ai・quarantined 以外）は
+        監査ログに 'nonauto_ai_transition' を残す（要確認マーク）。
+        """
+        from warden.transitions import IllegalTransition, check_transition
+
+        flag = check_transition(self.current_status(unit_id), status, decided_by)
         self.conn.execute(
             "INSERT INTO status_history (unit_id, status, decided_by, reason, adr_ref) "
             "VALUES (?, ?, ?, ?, ?)",
             (unit_id, status, decided_by, reason, adr_ref),
         )
+        if flag == "review":
+            self.audit(decided_by, "nonauto_ai_transition", "rule_unit",
+                       unit_id, f'{{"to": "{status}"}}')
 
     def current_status(self, unit_id: int) -> str | None:
         row = self.conn.execute(

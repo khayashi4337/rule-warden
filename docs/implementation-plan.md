@@ -113,42 +113,42 @@
 
 ### 2b. ステータス・推奨・判断
 
-- [ ] 2b.1 `status_history` append（最新行=現状態）
-- [ ] 2b.2 遷移表の実装＋許可外遷移をエラーに
-- [ ] 2b.3 「AI 単独は provisional_ai / quarantined のみ」を検査
-- [ ] 2b.4 `recommendations`/`decisions` 書込（決定→同時に status_history）
-- [ ] 2b.5 `provisional_records`（reason・outcome/confirmed_at ペア）
-- [ ] 2b.6 `current_status` VIEW
-- [ ] 2b.7 `audit_log` 書込フック（全状態変化）
-- [ ] 2b.8 `settings` get/set（`bypass_mode` 等）
-- [ ] 2b.9 遷移・ペア制約のテスト
-- [ ] 2b.10 コミット
+- [x] 2b.1 `status_history` append（最新行=現状態）
+- [x] 2b.2 遷移表の実装＋許可外遷移をエラーに
+- [x] 2b.3 「AI 単独は provisional_ai / quarantined のみ」を検査
+- [x] 2b.4 `recommendations`/`decisions` 書込（決定→同時に status_history）
+- [x] 2b.5 `provisional_records`（reason・outcome/confirmed_at ペア）
+- [x] 2b.6 `current_status` VIEW
+- [x] 2b.7 `audit_log` 書込フック（全状態変化）
+- [x] 2b.8 `settings` get/set（`bypass_mode` 等）
+- [x] 2b.9 遷移・ペア制約のテスト
+- [x] 2b.10 コミット
 
 ### 2c. Orchestrator（段取り・暫定適用・隔離実行）
 
-- [ ] 2c.1 `scan()`: parse→upsert→新旧差分検出
-- [ ] 2c.2 採点呼出 → `Recommendation` 保存（スタブ採点で先に通す）
-- [ ] 2c.3 暫定適用: `provisional_ai`＋`ProvisionalRecord`（いつ・なぜ）
-- [ ] 2c.4 隔離実行: RE の物理移動＋`隔離:` コミット＋`quarantined`
-- [ ] 2c.5 `bypass_mode=ON` 時は推奨どおり直確定
-- [ ] 2c.6 「確実に質問して」検知 → `questions` へ（例外的経路）
-- [ ] 2c.7 `AdrRecorder`: 暫定承認の根拠を warden 側 ADR に記録
-- [ ] 2c.8 `audit_log` 一貫記録
-- [ ] 2c.9 scan→採点→暫定→隔離の E2E 統合テスト
-- [ ] 2c.10 コミット
+- [x] 2c.1 `scan()`: parse→upsert→新旧差分検出
+- [x] 2c.2 採点呼出 → `Recommendation` 保存（スタブ採点で先に通す）
+- [x] 2c.3 暫定適用: `provisional_ai`＋`ProvisionalRecord`（いつ・なぜ）
+- [x] 2c.4 隔離実行: RE の物理移動＋`隔離:` コミット＋`quarantined`
+- [x] 2c.5 `bypass_mode=ON` 時は推奨どおり直確定
+- [x] 2c.6 「確実に質問して」検知 → `questions` へ（例外的経路）
+- [x] 2c.7 `AdrRecorder`: 暫定承認の根拠を warden 側 ADR に記録
+- [x] 2c.8 `audit_log` 一貫記録
+- [x] 2c.9 scan→採点→暫定→隔離の E2E 統合テスト
+- [x] 2c.10 コミット
 
 ### 2d. 質問キュー＋要確認一覧クエリ
 
-- [ ] 2d.1 `questions` enqueue（同時 1 問のアプリ層強制）
-- [ ] 2d.2 タイムアウト監視（`timeout_at` 超過→`timed_out`）
-- [ ] 2d.3 回答の反映（`answered`→StatusChange 確定）
-- [ ] 2d.4 `timed_out` → 暫定承認せず要確認へ留まる
-- [ ] 2d.5 一覧クエリ: `provisional_ai`＋`confirmed_at IS NULL` の条
-- [ ] 2d.6 直近 `score_runs` 結合 → 危険度順ソート
-- [ ] 2d.7 準ルール条（`rules_junrule.md`）を union で混ぜる
-- [ ] 2d.8 出所バッジ用フラグ（隔離/準ルールの区別）
-- [ ] 2d.9 一覧クエリのテスト（件数・順序・union）
-- [ ] 2d.10 コミット
+- [x] 2d.1 `questions` enqueue（同時 1 問のアプリ層強制）
+- [x] 2d.2 タイムアウト監視（`timeout_at` 超過→`timed_out`）
+- [x] 2d.3 回答の反映（`answered`→StatusChange 確定）
+- [x] 2d.4 `timed_out` → 暫定承認せず要確認へ留まる
+- [x] 2d.5 一覧クエリ: `provisional_ai`＋`confirmed_at IS NULL` の条
+- [x] 2d.6 直近 `score_runs` 結合 → 危険度順ソート
+- [x] 2d.7 準ルール条（`rules_junrule.md`）を union で混ぜる
+- [x] 2d.8 出所バッジ用フラグ（隔離/準ルールの区別）
+- [x] 2d.9 一覧クエリのテスト（件数・順序・union）
+- [x] 2d.10 コミット
 
 ## フェーズ 3: AiGateway（D8・O7）
 

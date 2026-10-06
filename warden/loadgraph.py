@@ -62,15 +62,29 @@ def _collect_refs(path: Path) -> list[str]:
     return refs
 
 
-def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode]:
-    """root 配下の全 .md について loaded フラグを返す。
+# ルール格納が想定されるサブディレクトリ（それ以外の projects/sessions/
+# agent-memory 等の運用データ領域は条管理の対象外）
+INCLUDE_DIRS = ("skills", "agents", "commands", ".agents")
 
-    quarantine/ 以下は隔離済みなのでロードグラフの対象外とする。
+
+def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode]:
+    """root 直下の .md とルール領域サブディレクトリを対象に
+    loaded フラグを返す。
+
+    - quarantine/ 以下は隔離済みなので対象外
+    - projects/・sessions/ 等の運用データは対象外（数千件になり、
+      ルールではないため）
     """
     root = Path(root).resolve()
     nodes: dict[str, FileNode] = {}
 
-    for f in sorted(root.rglob("*.md")):
+    candidates: list[Path] = list(root.glob("*.md"))
+    for d in INCLUDE_DIRS:
+        sub = root / d
+        if sub.is_dir():
+            candidates.extend(sub.rglob("*.md"))
+
+    for f in sorted(candidates):
         rel = f.relative_to(root).as_posix()
         if rel.startswith("quarantine/"):
             continue
