@@ -100,16 +100,16 @@
 
 ### 2a. DB 初期化＋条 upsert
 
-- [ ] 2a.1 `PRAGMA foreign_keys=ON`・`user_version` でスキーマ適用
-- [ ] 2a.2 `agents` upsert（local-claude）
-- [ ] 2a.3 `rule_files` upsert（path NOCASE・loaded・sha256）
-- [ ] 2a.4 `rule_units` upsert（自然キー file+hash+heading_path）
-- [ ] 2a.5 present 差分（消えた条 → `present=0`）
-- [ ] 2a.6 succession 検出の枠（旧→新の対応付け口）
-- [ ] 2a.7 `provenance` 書込
-- [ ] 2a.8 `criteria`/`score_runs`/`score_details` 書込の枠
-- [ ] 2a.9 DDL 負例テスト再現（CHECK/UNIQUE/FK が効くことを確認）
-- [ ] 2a.10 コミット
+- [x] 2a.1 `PRAGMA foreign_keys=ON`・`user_version` でスキーマ適用
+- [x] 2a.2 `agents` upsert（local-claude）
+- [x] 2a.3 `rule_files` upsert（path NOCASE・loaded・sha256）
+- [x] 2a.4 `rule_units` upsert（自然キー file+hash+heading_path）
+- [x] 2a.5 present 差分（消えた条 → `present=0`）
+- [x] 2a.6 succession 検出の枠（旧→新の対応付け口）
+- [x] 2a.7 `provenance` 書込
+- [x] 2a.8 `criteria`/`score_runs`/`score_details` 書込の枠
+- [x] 2a.9 DDL 負例テスト再現（CHECK/UNIQUE/FK が効くことを確認）
+- [x] 2a.10 コミット
 
 ### 2b. ステータス・推奨・判断
 
