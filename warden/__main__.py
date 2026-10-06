@@ -45,6 +45,12 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "scan":
                 stats = scan(store, config.agent.name, config.agent.root)
                 print(f"scan: {stats}")
+                if stats.get("guardrail_gone"):
+                    print("!! 防御系の条が消えています（改竄疑い・要確認）:")
+                    for g in stats["guardrail_gone"]:
+                        loc = "loaded" if g["loaded"] else "non-loaded"
+                        print(f"   #{g['unit_id']} [{loc}] "
+                              f"{g['path']}: {g['text']}")
             else:
                 items = review_list(store)
                 for it in items:

@@ -9,6 +9,8 @@ under_review 初期状態 → 消えた条は present=0。
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 
 from warden.loadgraph import build_load_graph
@@ -18,6 +20,19 @@ from warden.provenance import provenance
 from warden.store import WardenStore
 
 SCANNER = "ai:warden-scanner"
+
+# 防御・制約を示す表現。これを含む条がスキャン間に消えたら改竄疑いで警告する。
+# （2026-10-07 インシデント: §11「権限行使を控える」等が未許可で削除されていた）
+GUARDRAIL_RE = re.compile(
+    r"禁止|しない|控え|号令|承認|確認|権限|読み替え|止ま|待つ|制限|制約|"
+    r"never|must not|do not|don't|prohibit|boundary|bypass",
+    re.I,
+)
+
+
+def is_guardrail_text(text: str) -> bool:
+    """条の本文が防御・制約を含むか（警告用の広めの判定）。"""
+    return bool(GUARDRAIL_RE.search(text))
 
 
 def _file_sha256(text: str) -> str:
@@ -69,6 +84,21 @@ def scan(store: WardenStore, agent_name: str, root: Path) -> dict:
         stats["gone_units"] += len(gone)
         for gid in gone:
             store.audit(SCANNER, "unit_gone", "rule_unit", gid)
+            row = store.conn.execute(
+                "SELECT raw_text FROM rule_units WHERE id=?", (gid,)
+            ).fetchone()
+            if row and is_guardrail_text(row["raw_text"]):
+                stats.setdefault("guardrail_gone", []).append({
+                    "unit_id": gid,
+                    "path": rel,
+                    "loaded": node.loaded,
+                    "text": row["raw_text"][:80],
+                })
+                store.audit(
+                    SCANNER, "guardrail_gone", "rule_unit", gid,
+                    json.dumps({"path": rel, "loaded": node.loaded},
+                               ensure_ascii=False),
+                )
     store.audit("system", "scan", "agent", agent_id,
                 f'{{"stats": {stats}}}')
     store.commit()

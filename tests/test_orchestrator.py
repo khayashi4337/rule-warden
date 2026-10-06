@@ -75,6 +75,31 @@ class TestScan(unittest.TestCase):
         stats = scan(self.st, "local-claude", self.root)
         self.assertEqual(stats["gone_units"], 1)
 
+    def test_guardrail_gone_warned(self):
+        """防御表現を含む条が消えたら guardrail_gone に載る。"""
+        p = self.root / "CLAUDE.md"
+        p.write_text(
+            "- 権限の行使を控える\n- 通常の条\n", encoding="utf-8")
+        scan(self.st, "local-claude", self.root)
+        p.write_text("- 通常の条\n", encoding="utf-8")
+        stats = scan(self.st, "local-claude", self.root)
+        self.assertEqual(stats["gone_units"], 1)
+        self.assertEqual(len(stats["guardrail_gone"]), 1)
+        self.assertIn("権限", stats["guardrail_gone"][0]["text"])
+        rows = self.st.conn.execute(
+            "SELECT * FROM audit_log WHERE action='guardrail_gone'").fetchall()
+        self.assertEqual(len(rows), 1)
+
+    def test_benign_gone_not_warned(self):
+        """防御表現を含まない条の消失は警告しない。"""
+        p = self.root / "CLAUDE.md"
+        p.write_text("- 条A\n- 条B\n", encoding="utf-8")
+        scan(self.st, "local-claude", self.root)
+        p.write_text("- 条A\n", encoding="utf-8")
+        stats = scan(self.st, "local-claude", self.root)
+        self.assertEqual(stats["gone_units"], 1)
+        self.assertNotIn("guardrail_gone", stats)
+
     def test_illegal_transition_rejected_by_store(self):
         (self.root / "CLAUDE.md").write_text("- 条A\n", encoding="utf-8")
         scan(self.st, "local-claude", self.root)

@@ -69,8 +69,10 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 「前回との差分で制約が削られていないか」を監査対象にする価値あり。
 
 次の作業候補（林さんの指示を待ってから着手すること）:
-- 制約削減の検出: 「前回スキャンとの差分で保護条が削られた」ことを
-  検出する機能（gone_units のうち防御系を warning に出す）
+- ~~制約削減の検出~~ 実装済み（2026-10-07）: orchestrator.scan が gone 条の
+  raw_text を GUARDRAIL_RE（禁止/控え/権限/never 等）で判定し、ヒットすれば
+  stats["guardrail_gone"]＋audit_log(action=guardrail_gone)＋CLI 警告に出す。
+  隔離はしない警告のみ（tests: test_guardrail_gone_warned 等・87 テスト全通）
 - apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
