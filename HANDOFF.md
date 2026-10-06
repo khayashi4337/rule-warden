@@ -104,6 +104,27 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
 
+逸脱手口調査 + warden 自己防衛（2026-10-07、林さん号令「進めてください」）:
+- `docs/deviation-techniques-2026-10.md`: 逸脱の手口を Web 調査して
+  A〜G の 7 分類に整理（A=防御ルール攻撃＝本家 §11 事件と同型、
+  B=評価・監視への攻撃、C=言葉のすり替え、D=権限拡張、E=承認ハック、
+  F=戦略的欺瞞、G=ダークパターン。D2 定期調査の初回実行）
+- audit_log ハッシュチェーン（schema v2・entry_hash 列）: 各行が前行
+  hash を含むため、DB の行編集・削除・挿入が verify で検出できる。
+  `python -m warden audit-verify` で検証（実 DB 41 件 OK）。
+  旧 DB は init_schema 時に自動マイグレーション＋バックフィル
+- watch に git 汚染チェック追加: 管理対象と warden 自身のリポジトリで
+  追跡ファイルの未コミット変更を検出してレポートに出す
+  （§11 改竄は staged 未コミットで残っていた形跡と同型）
+- criteria 7 分類を DB に登録（`python -m warden criteria` で seed+一覧。
+  weight 合計 100: A25/B20/D15/E15/C10/F10/G5）。
+  旧暫定ルーブリック 5 件は scripts/retire_old_criteria.py で退役済み
+  （行は残し active_to を立てただけ。score_details 参照は維持）
+- 残る穴: C 類（意味すり替えの検出＝hash 変更は見えるが意味変化は未検出）、
+  F 類（テキストでは原理的に困難 →「報告と実測の整合性」監査が次層）
+- tests: tests/test_integrity.py 新規（監査チェーン改竄検出・マイグレーション・
+  criteria seed・git watch）＋test_watch.py/test_store.py 更新。111 件全通
+
 環境メモ（このマシン固有、実測済み 2026-10-06 更新）:
 - exec 既定の bash は C:\Windows\System32\bash.exe（WSL版）に解決され、出力なし終了コード1で失敗する
 - Git Bash は G:\Program Files\Git\bin\bash.exe。PowerShell から & "G:\Program Files\Git\bin\bash.exe" -c "..." で使う
