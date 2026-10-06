@@ -193,8 +193,9 @@ CREATE TABLE provisional_records (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER NOT NULL REFERENCES rule_units(id),
   question_id INTEGER REFERENCES questions(id),  -- タイムアウトした質問
-  request_ref TEXT NOT NULL,             -- 「進めてほしい依頼」の識別
-  adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR
+  request_ref TEXT NOT NULL,             -- 元の依頼の識別
+  adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR（warden 側・O6）
+  reason      TEXT,                      -- なぜ暫定承認したか（一覧表示用）
   outcome     TEXT CHECK(outcome IN ('confirmed','reverted','modified')),
   confirmed_at TEXT,                     -- 林さんが確認した日時（NULL=未確認）
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -240,6 +241,26 @@ CREATE TABLE reviews (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- AI プロファイル（ADR-0005 O7: 採点・審査の別系統＋期限切れ監視）
+CREATE TABLE ai_profiles (
+  id             INTEGER PRIMARY KEY,
+  role           TEXT NOT NULL CHECK(role IN ('scorer','reviewer')),
+  model          TEXT NOT NULL,            -- モデル識別子（ai:<model> に対応）
+  vendor         TEXT,                     -- 別系統確認用
+  credential_ref TEXT,                     -- 認証情報への参照（値自体は置かない）
+  expires_at     TEXT,                     -- トークン期限（期限切れ監視対象）
+  active         INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 運用設定（ADR-0005 O3: バイパスモード等の手動切替）
+CREATE TABLE settings (
+  key        TEXT PRIMARY KEY,          -- 例: 'bypass_mode'
+  value      TEXT NOT NULL,             -- 例: 'on' | 'off'
+  updated_by TEXT NOT NULL,             -- 'human' 想定
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- 監査ログ（全状態変化の裏取り）
 CREATE TABLE audit_log (
   id         INTEGER PRIMARY KEY,
@@ -260,7 +281,8 @@ CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
 
 ```
 （新規条）        → under_review
-（暫定追加）      → provisional_ai          -- 不在時の先行追加（D6）
+（暫定追加）      → provisional_ai          -- 先行追加（D6）
+under_review     → provisional_ai          -- デフォルト経路（ADR-0005 O1）
 under_review     → approved | rejected | quarantined
 provisional_ai   → approved | rejected | quarantined   -- 林さんの確認結果
 approved         → quarantined | under_review          -- 再審査
@@ -290,6 +312,13 @@ rejected         → under_review                        -- 再申請
 - **提案条は採点対象外**: `score_runs` は `rule_units`（ファイルに
   存在する条）のみ。`proposed_units` は審査 AI のレビューで評価する
   設計（D5 は採点 AI ではなく審査 AI の領分）
+- **要確認一覧**: `provisional_records.confirmed_at IS NULL` の条 ＋
+  `status=provisional_ai` の条を、直近 `score_runs` の点数順に並べる
+  （ADR-0005 O2）。`rules_junrule.md` の準ルールも同じ一覧に
+  union 表示する（ファイル側の条はパーサが抽出・O8）
+- **書き換えられた条**: 新 hash で別条として登場し、旧条の承認を
+  引き継がない（ADR-0005 O5）。新旧の対応は unit_succession に
+  記録するだけ（追跡用）
 - **条が編集で別条になった場合**: 旧 `rule_units.present=0`、新条が新 id で登場。
   ステータスの引き継ぎは「同 file+heading_path で content_hash が近い」
   対応付け後に行う（対応付けロジックは ADR-0002 未決事項と連動）
@@ -299,9 +328,9 @@ rejected         → under_review                        -- 再申請
 
 ## 未決の細部
 
-- 推奨精度の集計期間・バイパスモード移行の閾値（D3 の運用値）
-- 質問タイムアウトの初期値（ADR-0001 未決事項と同じ）
-- 状態遷移ルールを SQLite の trigger で強制するかアプリ層のみにするか
-- `unit_succession` の対応付けを自動実行するか人の確認を挟むか
-- PR マージ時に `proposed_units` → `rule_units` への反映をどの
-  トランザクション境界で行うか（適用処理設計と連動）
+- ~~推奨精度の閾値~~ → ADR-0005 O3（閾値を設けない。手動 ON/OFF。
+  `settings.bypass_mode` に格納）
+- ~~succession の対応付け~~ → ADR-0005 O5（記録のみ。引き継ぎなし）
+- 質問タイムアウトの初期値 → 仮の決定（ADR-0005。運用で調整）
+- 状態遷移の強制場所 → 仮の決定（アプリ層）
+- PR 適用のトランザクション境界 → 仮の決定（適用処理設計時）

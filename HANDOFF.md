@@ -14,9 +14,11 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 4. G:\prj2\rule-warden\docs\adr\0002.5-domain-model.md （要件用語のクラス図・シーケンス図・ドラフト）
 5. G:\prj2\rule-warden\docs\adr\0003-sqlite-schema.md （SQLite スキーマ設計・ドラフト）
 6. G:\prj2\rule-warden\docs\adr\0004-commit-message-rules.md （コミットメッセージルール・ドラフト）
+7. G:\prj2\rule-warden\docs\adr\0005-operation-decisions.md （ヒアリング確定の運用方針 O1〜O8＋仮の決定）
 
 状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動は完了。
-条単位パーサー設計と SQLite スキーマ設計は ADR-0002/0003 としてドラフト提出済み（林さんレビュー待ち）。実装は未着手。
+ADR-0005 で運用方針が確定（デフォルト暫定承認・要確認は危険度順・バイパスは手動・
+準ルールと隔離は分離保持し統合一覧）。ADR-0002〜0004 はドラフト。実装は未着手。
 
 次の作業候補（林さんの指示を待ってから着手すること）:
 - Forgejo 初期設定（ブラウザで http://127.0.0.1:3300/ を開き管理者作成）+ .claude 用リポジトリ作成
