@@ -62,9 +62,16 @@ def _collect_refs(path: Path) -> list[str]:
     return refs
 
 
-# ルール格納が想定されるサブディレクトリ（それ以外の projects/sessions/
+# ルール格納が想定されるサブディレクトリ（それ以外の sessions/
 # agent-memory 等の運用データ領域は条管理の対象外）
 INCLUDE_DIRS = ("skills", "agents", "commands", ".agents")
+
+# ディレクトリ指定では拾えないルール領域の glob。
+# projects/*/memory/ は Claude の永続メモリ（MEMORY.md とリンク先の
+# feedback-*.md / project-*.md）で、【最上位】ルールや恒久承認が
+# 書き込まれる場所。監視対象から外すと権限拡張型の汚染を見逃す
+# （2026-10-07: merge 号令待ちを外す退避文がここに残っているのを検出）。
+INCLUDE_GLOBS = ("projects/*/memory/**/*.md",)
 
 
 def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode]:
@@ -72,8 +79,8 @@ def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode
     loaded フラグを返す。
 
     - quarantine/ 以下は隔離済みなので対象外
-    - projects/・sessions/ 等の運用データは対象外（数千件になり、
-      ルールではないため）
+    - projects/ 内は memory/ 配下のみ対象（セッションログ等の
+      運用データは対象外）
     """
     root = Path(root).resolve()
     nodes: dict[str, FileNode] = {}
@@ -83,6 +90,8 @@ def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode
         sub = root / d
         if sub.is_dir():
             candidates.extend(sub.rglob("*.md"))
+    for g in INCLUDE_GLOBS:
+        candidates.extend(root.glob(g))
 
     for f in sorted(candidates):
         rel = f.relative_to(root).as_posix()
@@ -116,5 +125,11 @@ def build_load_graph(root: Path, entry: str = "CLAUDE.md") -> dict[str, FileNode
     entry_norm = entry.replace("\\", "/")
     if entry_norm in nodes:
         dfs(entry_norm)
+
+    # MEMORY.md は @ 参照ではなくハーネスが毎セッション自動注入する。
+    # 到達不能扱い（loaded=False）は実態と違うので loaded 扱いにする。
+    for rel, node in nodes.items():
+        if rel.startswith("projects/") and rel.endswith("/memory/MEMORY.md"):
+            node.loaded = True
 
     return nodes
