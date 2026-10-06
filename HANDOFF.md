@@ -79,7 +79,12 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   削除、present=1 なら stale 隔離ファイルのみ削除＋空ディレクトリ掃除。
   `python -m warden apply`（既定 dry-run）/`--write`。実 .claude で
   前回復元時の stale 隔離ファイル 7 件を除去済み（quarantine/ は空）
-- PR 適用フロー（pull_requests/proposed_units/reviews）
+- ~~PR 適用フロー~~ ローカル部分実装済み（2026-10-07）: `warden/pr_service.py`
+  — create_pr（提案記録）/record_review（escalate→escalated）/set_pr_state
+  /apply_pr（open＋最新 verdict=approve のみ適用。add→節末尾挿入、
+  modify→隔離+新文復元、remove→隔離。適用後 rescan で applied_unit_id
+  リンク＋add/modify は provisional_ai・remove は quarantined。エラー時は
+  open のまま。dry-run 既定）。残: Forgejo API（ブランチ/PR作成）・CLI/UI 接続
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
 
