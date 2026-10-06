@@ -15,13 +15,11 @@ class TestCli(unittest.TestCase):
         self.assertIn("scan", buf.getvalue())
 
     def test_subcommand_stub(self):
-        for cmd in ("apply", "serve"):
-            with self.subTest(cmd=cmd):
-                buf = io.StringIO()
-                with redirect_stdout(buf):
-                    rc = main([cmd])
-                self.assertEqual(rc, 0)
-                self.assertIn("not implemented", buf.getvalue())
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(["apply"])
+        self.assertEqual(rc, 0)
+        self.assertIn("not implemented", buf.getvalue())
 
     def test_parser_has_commands(self):
         p = build_parser()

@@ -58,7 +58,16 @@ def main(argv: list[str] | None = None) -> int:
             store.close()
         return 0
 
-    # apply / serve はフェーズ 3〜4 で実装
+    if args.command == "serve":
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        from warden.webapp import serve as web_serve
+
+        web_serve(store, config.agent.root)
+        return 0
+
+    # apply はフェーズ 5 のリハーサルで接続
     print(f"[not implemented] {args.command} (db={config.db_path})")
     return 0
 

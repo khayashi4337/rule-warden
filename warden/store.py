@@ -17,8 +17,12 @@ from warden.schema import DDL, SCHEMA_VERSION
 
 class WardenStore:
     def __init__(self, db_path: Path | str):
+        import threading
+
         self.db_path = str(db_path)
-        self.conn = sqlite3.connect(self.db_path)
+        # Web サーバ（別スレッド）からの利用を許可。直列化は lock で担保
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.lock = threading.RLock()
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.row_factory = sqlite3.Row
 
@@ -163,4 +167,5 @@ class WardenStore:
         )
 
     def commit(self) -> None:
-        self.conn.commit()
+        with self.lock:
+            self.conn.commit()
