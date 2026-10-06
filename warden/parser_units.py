@@ -58,7 +58,7 @@ def extract_units(text: str) -> list[RuleUnit]:
     open_indent = -1
 
     def heading_path() -> str:
-        return " > ".join(heading_stack)
+        return " > ".join(h for h in heading_stack if h)
 
     def next_ordinal() -> int:
         nonlocal ordinal_counter

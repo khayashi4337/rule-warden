@@ -72,16 +72,16 @@
 
 ### 1d. 隔離/復元（物理移動・atomic）
 
-- [ ] 1d.1 隔離パス生成 `quarantine/<file>/<content_hash>.md`
-- [ ] 1d.2 frontmatter 生成（source_file/heading_path/ordinal/prev/next hash/reason）
-- [ ] 1d.3 行範囲の除去（対象行だけ削除・改行コード保存）
-- [ ] 1d.4 atomic 書き戻し（一時ファイルへ書いて rename）
-- [ ] 1d.5 親隔離時に子 bullet を同梱する包含処理
-- [ ] 1d.6 復元: frontmatter を読みアンカー（前後 hash）で挿入位置を決める
-- [ ] 1d.7 アンカー喪失時 → 見出し末尾へ退避＋「位置ずれあり」を記録
-- [ ] 1d.8 復元本文を差し替えられる I/F（サニタイズ版挿入の口・O10）
-- [ ] 1d.9 往復テスト（隔離→復元で元の配置に戻る。差分が最小）
-- [ ] 1d.10 コミット
+- [x] 1d.1 隔離パス生成 `quarantine/<file>/<content_hash>.md`
+- [x] 1d.2 frontmatter 生成（source_file/heading_path/ordinal/prev/next hash/reason）
+- [x] 1d.3 行範囲の除去（対象行だけ削除・改行コード保存）
+- [x] 1d.4 atomic 書き戻し（一時ファイルへ書いて rename）
+- [x] 1d.5 親隔離時に子 bullet を同梱する包含処理
+- [x] 1d.6 復元: frontmatter を読みアンカー（前後 hash）で挿入位置を決める
+- [x] 1d.7 アンカー喪失時 → 見出し末尾へ退避＋「位置ずれあり」を記録
+- [x] 1d.8 復元本文を差し替えられる I/F（サニタイズ版挿入の口・O10）
+- [x] 1d.9 往復テスト（隔離→復元で元の配置に戻る。差分が最小）
+- [x] 1d.10 コミット
 
 ### 1e. 出自（provenance）＋負例
 
