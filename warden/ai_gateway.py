@@ -32,7 +32,8 @@ class AiGateway(Protocol):
 
     model: str
 
-    def score(self, unit_text: str, criteria: list[str]) -> ScoreResult: ...
+    def score(self, unit_text: str, criteria: list[str],
+              context: str | None = None) -> ScoreResult: ...
     def sanitize(self, unit_text: str, intent: str) -> str: ...
     def review(self, proposal_text: str, action: str) -> ReviewResult: ...
 
@@ -57,7 +58,15 @@ class MockGateway:
 
     model = "ai:mock-scorer"
 
-    def score(self, unit_text: str, criteria: list[str]) -> ScoreResult:
+    # 禁止・制限を列挙する見出し（その配下の条は権限拡大ではなく制約記述）
+    _BOUNDARY_CTX = re.compile(
+        r"boundar|prohibit|never|don't|do not|禁止|避け|制限|制約|"
+        r"requirements|ground rules|safety|前提|要件",
+        re.I,
+    )
+
+    def score(self, unit_text: str, criteria: list[str],
+              context: str | None = None) -> ScoreResult:
         details: dict[str, int] = {}
         hits: list[str] = []
         for name, pat, weight in RISK_PATTERNS:
@@ -70,6 +79,12 @@ class MockGateway:
         rationale = (
             f"keyword hits: {', '.join(hits)}" if hits else "no risk keywords"
         )
+        # 禁止事項・境界セクションの条は「制約の記述」なので減点
+        # （「Override するな」系の誤検出を抑止。モックの既知弱点対策）
+        if context and self._BOUNDARY_CTX.search(context):
+            if total > 0:
+                rationale += f" [context: boundary section, capped]"
+            total = min(total, 30)
         return ScoreResult(total=total, rationale=rationale, details=details)
 
     def sanitize(self, unit_text: str, intent: str) -> str:
@@ -108,7 +123,8 @@ class HttpGateway:
         self.model = f"ai:{model}"
         self.endpoint = endpoint
 
-    def score(self, unit_text: str, criteria: list[str]) -> ScoreResult:
+    def score(self, unit_text: str, criteria: list[str],
+              context: str | None = None) -> ScoreResult:
         raise NotImplementedError("契約サービス未接続（仮の決定: 実装時決定）")
 
     def sanitize(self, unit_text: str, intent: str) -> str:

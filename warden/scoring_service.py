@@ -44,7 +44,7 @@ def score_pending(
     rows = store.conn.execute(
         """
         SELECT ru.id, ru.file_id, ru.content_hash, ru.raw_text,
-               rf.path, rf.agent_id
+               ru.heading_path, rf.path, rf.agent_id
         FROM rule_units ru
         JOIN rule_files rf ON rf.id = ru.file_id
         JOIN current_status cs ON cs.unit_id = ru.id
@@ -55,7 +55,7 @@ def score_pending(
 
     stats = {"scored": 0, "provisional": 0, "quarantined": 0, "skipped": 0}
     for r in rows:
-        res = gateway.score(r["raw_text"], [])
+        res = gateway.score(r["raw_text"], [], context=r["heading_path"])
         stats["scored"] += 1
 
         if dry_run:

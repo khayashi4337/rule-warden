@@ -37,9 +37,14 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   （「Never Override...」のような禁止文も危険扱い）。本番採点は
   契約 AI 接続後に精度評価が必要
 
+5b 実施済み（2026-10-07、林さん号令）: 実 .claude に採点適用。
+5,535 条 provisional_ai・7 条 quarantined（C:\Users\user\.claude\quarantine\ に
+物理退避済み）。ただし採点はモックのため 7 条は全部誤検出の見込み
+（"Safety First" 優先順位・「規約が優先する」記述など。要確認一覧から
+revert で復元可）。本格運用には契約 AI の ai_profiles 登録が必要。
+
 次の作業候補（林さんの指示を待ってから着手すること）:
-- 5b 本番デコンタミ: 実 .claude への適用。物理的な大量隔離を伴うため
-  林さんの明示の号令＋本物の採点 AI（ai_profiles 登録）を待つ
+- 隔離 7 件の revert / 復元（要確認一覧または quarantine メタから）
 - apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
