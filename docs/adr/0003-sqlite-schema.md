@@ -53,7 +53,8 @@ CREATE TABLE agents (
 CREATE TABLE rule_files (
   id           INTEGER PRIMARY KEY,
   agent_id     INTEGER NOT NULL REFERENCES agents(id),
-  path         TEXT NOT NULL,            -- 例: "CLAUDE.md"
+  path         TEXT NOT NULL COLLATE NOCASE,  -- Windows FS は大小区別しない
+               -- 例: "CLAUDE.md"
   git_tracked  INTEGER NOT NULL,         -- 0/1: 出自情報の取り方が変わる
   loaded       INTEGER NOT NULL,         -- 0/1: @グラフ到達可否
   sha256       TEXT,                     -- 前回スキャン時の内容ハッシュ
@@ -74,7 +75,11 @@ CREATE TABLE rule_units (
   raw_text      TEXT NOT NULL,           -- 原文（改行含む）
   first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_seen_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  present       INTEGER NOT NULL DEFAULT 1   -- 0=ファイルから消えた（編集/隔離済）
+  present       INTEGER NOT NULL DEFAULT 1,  -- 0=ファイルから消えた（編集/隔離済）
+  -- 条の実体キー（ADR-0002 P3: file+heading_path+hash）。再スキャンの二重登録防止。
+  -- 注意: 同じ見出しの下に全く同じ文の bullet が2つある場合は区別できない
+  -- （実データで起きたら ordinal をキーに含める等の再検討）
+  UNIQUE(file_id, content_hash, heading_path)
 );
 CREATE INDEX idx_units_hash ON rule_units(content_hash);
 CREATE INDEX idx_units_file ON rule_units(file_id, present);
@@ -110,12 +115,12 @@ CREATE TABLE status_history (
   unit_id    INTEGER NOT NULL REFERENCES rule_units(id),
   status     TEXT NOT NULL CHECK(status IN
                ('approved','provisional_ai','under_review','quarantined','rejected')),
-  decided_by TEXT NOT NULL,              -- 'human' | 'ai:<model>' 
+  decided_by TEXT NOT NULL CHECK(decided_by = 'human' OR decided_by LIKE 'ai:%'),
   reason     TEXT,
   adr_ref    TEXT,                       -- 暫定承認の根拠 ADR パス（D6）
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX idx_status_unit ON status_history(unit_id, created_at);
+CREATE INDEX idx_status_unit ON status_history(unit_id, id);  -- 最新行取得は id 順（補足参照）
 
 -- 評価項目（合計100点、Web検索で定期更新。D2）
 CREATE TABLE criteria (
@@ -133,7 +138,7 @@ CREATE TABLE criteria (
 CREATE TABLE score_runs (
   id            INTEGER PRIMARY KEY,
   unit_id       INTEGER NOT NULL REFERENCES rule_units(id),
-  scorer        TEXT NOT NULL,           -- 採点AI識別子（交代可・D8）
+  scorer        TEXT NOT NULL CHECK(scorer LIKE 'ai:%'),  -- 採点AI識別子（交代可・D8）
   model_version TEXT,
   total_score   INTEGER NOT NULL CHECK(total_score BETWEEN 0 AND 100),
   rationale     TEXT NOT NULL,           -- 人が検査できる採点根拠（D2）
@@ -164,7 +169,8 @@ CREATE TABLE decisions (
                       ('approved','provisional_ai','under_review','quarantined','rejected')),
   -- 推奨との一致は recommended_status = final_status で算出（列は持たない。
   -- 保存すると矛盾した行を許容するため）
-  decided_by        TEXT NOT NULL DEFAULT 'human',
+  decided_by        TEXT NOT NULL DEFAULT 'human'
+                    CHECK(decided_by = 'human' OR decided_by LIKE 'ai:%'),
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -191,7 +197,10 @@ CREATE TABLE provisional_records (
   adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR
   outcome     TEXT CHECK(outcome IN ('confirmed','reverted','modified')),
   confirmed_at TEXT,                     -- 林さんが確認した日時（NULL=未確認）
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  -- outcome と confirmed_at は必ずペア（片方だけ入る矛盾を防ぐ）。
+  -- テーブル制約は全列定義の後でないと SQLite がエラーにするので末尾に置く
+  CHECK((outcome IS NULL) = (confirmed_at IS NULL))
 );
 
 -- 追加フロー: Forgejo PR と審査（D5）
@@ -200,7 +209,7 @@ CREATE TABLE pull_requests (
   agent_id     INTEGER NOT NULL REFERENCES agents(id),
   forgejo_repo TEXT NOT NULL,
   pr_number    INTEGER NOT NULL,
-  proposer     TEXT NOT NULL,            -- 'human' | 'ai:<model>'
+  proposer     TEXT NOT NULL CHECK(proposer = 'human' OR proposer LIKE 'ai:%'),
   state        TEXT NOT NULL DEFAULT 'open'
                CHECK(state IN ('open','merged','rejected','escalated')),
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
@@ -211,17 +220,21 @@ CREATE TABLE proposed_units (
   id             INTEGER PRIMARY KEY,
   pr_id          INTEGER NOT NULL REFERENCES pull_requests(id),
   action         TEXT NOT NULL CHECK(action IN ('add','modify','remove')),
-  file_path      TEXT NOT NULL,          -- 追加/変更先
+  file_path      TEXT NOT NULL COLLATE NOCASE,  -- 追加/変更先
   heading_path   TEXT,
   raw_text       TEXT NOT NULL,          -- 提案条の本文（未適用なので rule_units には無い）
   norm_hash      TEXT,
-  target_unit_id INTEGER REFERENCES rule_units(id)  -- modify/remove の対象既存条
+  target_unit_id INTEGER REFERENCES rule_units(id),  -- modify/remove の対象既存条
+  applied_unit_id INTEGER REFERENCES rule_units(id), -- マージ適用でできた条（追跡用）
+  -- add は target 必須でない、modify/remove は target 必須
+  CHECK((action = 'add' AND target_unit_id IS NULL)
+     OR (action IN ('modify','remove') AND target_unit_id IS NOT NULL))
 );
 
 CREATE TABLE reviews (
   id          INTEGER PRIMARY KEY,
   pr_id       INTEGER NOT NULL REFERENCES pull_requests(id),
-  reviewer    TEXT NOT NULL,             -- 審査AI識別子（採点AIと別系統・D5）
+  reviewer    TEXT NOT NULL CHECK(reviewer LIKE 'ai:%'),  -- 審査AI識別子（採点AIと別系統・D5）
   verdict     TEXT CHECK(verdict IN ('approve','request_changes','escalate')),
   comment     TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -230,13 +243,14 @@ CREATE TABLE reviews (
 -- 監査ログ（全状態変化の裏取り）
 CREATE TABLE audit_log (
   id         INTEGER PRIMARY KEY,
-  actor      TEXT NOT NULL,              -- 'human' | 'ai:<model>' | 'system'
+  actor      TEXT NOT NULL CHECK(actor = 'human' OR actor = 'system' OR actor LIKE 'ai:%'),
   action     TEXT NOT NULL,              -- quarantine/restore/status_change/...
   entity     TEXT NOT NULL,              -- 'rule_unit' | 'question' | ...
   entity_id  INTEGER NOT NULL,
   payload    TEXT,                       -- JSON 詳細
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
 ```
 
 ## 状態遷移（status の遷移ルール）
@@ -270,6 +284,12 @@ rejected         → under_review                        -- 再申請
 - **隔離中の条の物理位置**: `quarantine/<file>/<content_hash>.md`
   （ADR-0002 P6）から導出できるので列は持たない。
   隔離・復元の操作自体は audit_log に記録する
+- **「1 問ずつ」はスキーマでは強制しない**: questions に pending が
+  複数できても構造上は許容する。同時に出す質問を 1 つに絞るのは
+  アプリ層（QuestionQueue）の責務
+- **提案条は採点対象外**: `score_runs` は `rule_units`（ファイルに
+  存在する条）のみ。`proposed_units` は審査 AI のレビューで評価する
+  設計（D5 は採点 AI ではなく審査 AI の領分）
 - **条が編集で別条になった場合**: 旧 `rule_units.present=0`、新条が新 id で登場。
   ステータスの引き継ぎは「同 file+heading_path で content_hash が近い」
   対応付け後に行う（対応付けロジックは ADR-0002 未決事項と連動）
