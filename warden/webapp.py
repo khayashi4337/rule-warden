@@ -49,6 +49,8 @@ def union_list(store: WardenStore, root: Path) -> list[dict]:
     qdir = Path(root) / "quarantine"
     if qdir.is_dir():
         for qf in qdir.rglob("*.md"):
+            if not qf.is_file():  # quarantine/<file>.md/ は同名ディレクトリ
+                continue
             meta = read_quarantine_meta(qf)
             if meta:
                 items.append({

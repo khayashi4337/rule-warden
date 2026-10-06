@@ -14,12 +14,12 @@ class TestCli(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("scan", buf.getvalue())
 
-    def test_subcommand_stub(self):
+    def test_apply_dryrun(self):
         buf = io.StringIO()
         with redirect_stdout(buf):
             rc = main(["apply"])
         self.assertEqual(rc, 0)
-        self.assertIn("not implemented", buf.getvalue())
+        self.assertIn("apply [dry-run]", buf.getvalue())
 
     def test_parser_has_commands(self):
         p = build_parser()

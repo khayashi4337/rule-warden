@@ -73,7 +73,13 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   raw_text を GUARDRAIL_RE（禁止/控え/権限/never 等）で判定し、ヒットすれば
   stats["guardrail_gone"]＋audit_log(action=guardrail_gone)＋CLI 警告に出す。
   隔離はしない警告のみ（tests: test_guardrail_gone_warned 等・87 テスト全通）
-- apply コマンドの接続、PR 適用フロー（pull_requests/proposed_units/reviews）
+- ~~apply コマンドの接続~~ 実装済み（2026-10-07）: `warden/apply_service.py`
+  — DB の決定と物理状態を一致させる。quarantined で本文残存 → 物理隔離、
+  quarantined 以外＆隔離ファイル残存 → present=0 なら物理復元＋隔離ファイル
+  削除、present=1 なら stale 隔離ファイルのみ削除＋空ディレクトリ掃除。
+  `python -m warden apply`（既定 dry-run）/`--write`。実 .claude で
+  前回復元時の stale 隔離ファイル 7 件を除去済み（quarantine/ は空）
+- PR 適用フロー（pull_requests/proposed_units/reviews）
 - ADR-0002/0003/0004 のドラフト → 承認への状態更新
 - 本物 AiGateway（MCP or API・別系統 2 系統・期限監視）の接続
 

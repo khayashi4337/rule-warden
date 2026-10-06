@@ -19,7 +19,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("scan", help="管理対象を走査して条を抽出・記録する")
     sub.add_parser("list", help="一覧を表示する（統合リスト・危険度順）")
-    sub.add_parser("apply", help="暫定適用・隔離/復元を実行する")
+    ap_apply = sub.add_parser(
+        "apply", help="DB の決定と物理状態を一致させる（隔離/復元）")
+    ap_apply.add_argument(
+        "--write", action="store_true",
+        help="実際にファイルを書き換える（既定は dry-run 表示のみ）")
     sub.add_parser("serve", help="Web UI サーバを起動する（オンデマンド）")
 
     return p
@@ -73,7 +77,26 @@ def main(argv: list[str] | None = None) -> int:
         web_serve(store, config.agent.root)
         return 0
 
-    # apply はフェーズ 5 のリハーサルで接続
+    if args.command == "apply":
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        try:
+            from warden.apply_service import apply_decisions
+
+            stats = apply_decisions(
+                store, config.agent.root, dry_run=not args.write)
+            mode = "WRITE" if args.write else "dry-run"
+            print(f"apply [{mode}]:")
+            for key in ("quarantined", "restored", "stale_removed",
+                        "skipped"):
+                for it in stats[key]:
+                    print(f"  {key}: {it}")
+            print(f"apply [{mode}]: done")
+        finally:
+            store.close()
+        return 0
+
     print(f"[not implemented] {args.command} (db={config.db_path})")
     return 0
 
