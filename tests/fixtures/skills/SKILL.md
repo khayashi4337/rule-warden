@@ -60,7 +60,7 @@ Set-Location <依頼を出した作業フォルダ>
 node $cc status <ジョブ ID>
 node $cc result <ジョブ ID>      # 終わったあとに結果を取る
 ```
-- **ジョブの記録は、作業フォルダごとに分かれる。** 2026-10-04 の実測: `G:\proj\beta` と `G:\proj\alpha` では `status --all` が「No jobs recorded yet」、`C:\Users\user\.claude` では記録があった。別のフォルダから「No job found」と出ても、ジョブが無かった証拠ではない。依頼を出したフォルダで確認する。ジョブのログは `C:\Users\user\AppData\Local\Temp\codex-companion\<作業フォルダ名>-<ハッシュ>\jobs\<ジョブ ID>.log` にある（2026-10-04 実測。`status` の出力の `Log:` 行にも出る）。
+- **ジョブの記録は、作業フォルダごとに分かれる。** 2026-10-04 の実測: `G:\proj\alpha` と `G:\proj\beta` では `status --all` が「No jobs recorded yet」、`C:\Users\user\.claude` では記録があった。別のフォルダから「No job found」と出ても、ジョブが無かった証拠ではない。依頼を出したフォルダで確認する。ジョブのログは `C:\Users\user\AppData\Local\Temp\codex-companion\<作業フォルダ名>-<ハッシュ>\jobs\<ジョブ ID>.log` にある（2026-10-04 実測。`status` の出力の `Log:` 行にも出る）。
 - 結果の末尾に「Turn completion inferred ...」と出ることがある。Codex が成功の合図を出さず、周りの処理が終わったことから、終わったと推定したという意味である（§1）。結果の本文が取れたことと、完了が推定であることを、分けて書く。
 
 ## 5. 結果の扱い

@@ -1,4 +1,4 @@
-# GIT_ASKPASS 用。Forgejo の認証情報を C:\Users\user\.config\rule-warden\
+# GIT_ASKPASS 用。Forgejo の認証情報を %USERPROFILE%\.config\rule-warden\
 # forgejo-admin.txt から読んで返す（秘密値はこのファイルに書かない）。
 $cred = Get-Content "$env:USERPROFILE\.config\rule-warden\forgejo-admin.txt"
 $user = ($cred | Where-Object { $_ -like 'user:*' }) -replace '^user:\s*', ''

@@ -45,7 +45,7 @@ SQLite に永続化する。D3 の「推奨精度の実測」と D6 の「暫定
 CREATE TABLE agents (
   id          INTEGER PRIMARY KEY,
   name        TEXT NOT NULL UNIQUE,      -- 例: "local-claude"
-  root_path   TEXT NOT NULL,             -- 例: "C:\Users\user\.claude"
+  root_path   TEXT NOT NULL,             -- 例: "~/.claude"
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

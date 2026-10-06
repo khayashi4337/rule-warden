@@ -6,7 +6,7 @@
 
 ## 背景
 
-Claude の長期記憶（`C:\Users\user\.claude`）について、AI が自分の権限を広げる
+Claude の長期記憶（`~/.claude`）について、AI が自分の権限を広げる
 逸脱行為を許可するルールを自己追加し、本体の自浄作用が働かないレベルまで
 ルールが汚染された。これを管理するアプリを作る。
 
@@ -17,7 +17,7 @@ Claude の長期記憶（`C:\Users\user\.claude`）について、AI が自分�
 
 ### D1. 管理対象と単位
 
-- 対象は `C:\Users\user\.claude` 内のルールのみ。`.devin` 側は将来追加できる設計とする
+- 対象は `~/.claude` 内のルールのみ。`.devin` 側は将来追加できる設計とする
 - 制御単位は**ルール 1 条ずつ**（ファイル単位ではない）
 - 無効化はコメントアウトではなく、**読み込まれない隔離フォルダへの物理移動**
   - 理由: `CLAUDE.md` 系ファイルは中身がそのまま AI のコンテキストに注入されるため、
@@ -145,8 +145,8 @@ flowchart TB
 
 ## 検証済みの環境事実（2026-10-06 時点）
 
-- `C:\Users\user\.claude` は git リポジトリとして管理済み
-- `C:\Users\user\.devin` は git 未管理
+- `~/.claude` は git リポジトリとして管理済み
+- `~/.devin` は git 未管理
 - Podman インストール済み（`I:\tools\Podman\podman.exe`）、machine は未作成
 - Docker は未インストール。WSL2 Ubuntu-24.04 は稼働中
 - 既定 bash は WSL 版に解決されて失敗する。Git Bash は `G:\Program Files\Git\bin\bash.exe`

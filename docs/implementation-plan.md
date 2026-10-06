@@ -24,7 +24,7 @@
       ※計画では `src/warden/` だが、インストール不要で `python -m warden`
       が動くようリポジトリ直下に置いた）
 - [x] 0a.2 `tests/` 作成・`unittest` が走る最小テストを書く
-- [x] 0a.3 `config.py`: 管理対象ルート（`C:\Users\user\.claude`）・DB パス・
+- [x] 0a.3 `config.py`: 管理対象ルート（`~/.claude`）・DB パス・
        quarantine パスを読む設定層
 - [x] 0a.4 `logging` 設定（監査用に行動ログを残す形）
 - [x] 0a.5 `.gitignore`: `__pycache__`、`*.db`、`secrets/`

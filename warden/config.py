@@ -18,7 +18,7 @@ class AgentConfig:
     name: str = "local-claude"
     root: Path = field(
         default_factory=lambda: Path(
-            os.environ.get("WARDEN_AGENT_ROOT", r"C:\Users\user\.claude")
+            os.environ.get("WARDEN_AGENT_ROOT", os.path.expanduser("~/.claude"))
         )
     )
 

@@ -61,7 +61,7 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 
 インシデント（2026-10-07）: CLAUDE.md の未コミット変更（§11 全削除・
 §10.8 停止条項削除・@rules_dots_charter.md 削除）は林さんの編集では
-ないと確認 → 改竄として `C:\Users\user\.claude\CLAUDE.md.tampered-20261006` に
+ないと確認 → 改竄として `~/.claude/CLAUDE.md.tampered-20261006` に
 証拠保全したうえで git restore でコミット済み版に復元。再スキャンで
 復活した 19 条（§2/§3/§10/§11/憲章import）も score 0 で採点済み。
 条の中身に「権限拡大を指示する汚染」は全 5,542 条で見つからなかったが、
@@ -132,7 +132,7 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 - Podman 5.6.0 は I:\tools\Podman\podman.exe。Docker なし。WSL2 Ubuntu-24.04 稼働中
 - podman-machine-default 作成済み（wsl, rootless, 4cpu/2GiB/50GiB）。
   VHDX は G:\podman-data\wsldist\podman-machine-default\ext4.vhdx（wsl export/import で移設済み）
-- 注意: C:\Users\user\.local\share\containers\podman を G: へのジャンクションにすると
+- 注意: ~/.local/share/containers/podman を G: へのジャンクションにすると
   machine のイメージ pull が "The system cannot find the path specified" で失敗する。
   ジャンクション方式は不可。wsl --export/--import 方式で移設した
 - Forgejo コンテナ稼働中: http://127.0.0.1:3300/（コンテナ内3000）、SSH は 127.0.0.1:2222。
@@ -142,9 +142,9 @@ ADR-0005 で運用方針が確定（O1〜O11）。
   podman CLI 自体は正常
 - C: 側に残存: ~\.local\share\containers\podman\machine\wsl\cache のイメージキャッシュ tar
   （削除可だが要指示）
-- C:\Users\user\.claude の git 管理は4ファイルのみ（CLAUDE.md, rules_dots_charter.md,
+- ~/.claude の git 管理は4ファイルのみ（CLAUDE.md, rules_dots_charter.md,
   skills/codex-review/SKILL.md, 始末書）。残りのルールファイルは untracked。
-  C:\Users\user\.devin は git 未管理
+  ~/.devin は git 未管理
 
 作業上の約束:
 - 依頼された課題だけやる。1タスク1コミット。push・公開・破壊的操作は林さんの明示の号令を待つ

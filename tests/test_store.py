@@ -12,7 +12,7 @@ class TestStore(unittest.TestCase):
         self.db = Path(self.tmp.name) / "w.db"
         self.st = WardenStore(self.db)
         self.st.init_schema()
-        self.agent = self.st.upsert_agent("local-claude", r"C:\Users\user\.claude")
+        self.agent = self.st.upsert_agent("local-claude", r"C:\Users\tester\.claude")
         self.fid = self.st.upsert_file(self.agent, "CLAUDE.md", True, True)
 
     def tearDown(self):
@@ -24,7 +24,7 @@ class TestStore(unittest.TestCase):
         self.assertEqual(v, 2)
 
     def test_agent_upsert_idempotent(self):
-        a2 = self.st.upsert_agent("local-claude", r"C:\Users\user\.claude")
+        a2 = self.st.upsert_agent("local-claude", r"C:\Users\tester\.claude")
         self.assertEqual(a2, self.agent)
 
     def test_unit_upsert_new_and_seen(self):
