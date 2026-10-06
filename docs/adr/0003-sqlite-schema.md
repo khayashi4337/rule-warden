@@ -36,6 +36,11 @@ SQLite に永続化する。D3 の「推奨精度の実測」と D6 の「暫定
 ## テーブル定義
 
 ```sql
+-- SQLite の外部キーは既定で無効。接続ごとに必須:
+--   PRAGMA foreign_keys = ON;
+-- スキーマバージョンは PRAGMA user_version で管理し、
+-- 変更はマイグレーション履歴として残す。
+
 -- 管理対象（現要件では localhost の .claude 1 件）
 CREATE TABLE agents (
   id          INTEGER PRIMARY KEY,
@@ -64,7 +69,8 @@ CREATE TABLE rule_units (
   heading_path  TEXT NOT NULL,           -- 文脈（例 "核心ルール > 2. ..."）
   ordinal       INTEGER NOT NULL,        -- 同見出し内での出現順
   parent_id     INTEGER REFERENCES rule_units(id),  -- 親 bullet（P2 包含用）
-  kind          TEXT NOT NULL,           -- bullet/numbered/paragraph/table_row/import
+  kind          TEXT NOT NULL CHECK(kind IN
+                  ('bullet','numbered','paragraph','table_row','import')),
   raw_text      TEXT NOT NULL,           -- 原文（改行含む）
   first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_seen_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -73,17 +79,28 @@ CREATE TABLE rule_units (
 CREATE INDEX idx_units_hash ON rule_units(content_hash);
 CREATE INDEX idx_units_file ON rule_units(file_id, present);
 
+-- 編集・改名で「別条」になったときの旧→新の対応付け（設計方針の観測履歴）
+CREATE TABLE unit_succession (
+  id           INTEGER PRIMARY KEY,
+  prev_unit_id INTEGER NOT NULL REFERENCES rule_units(id),
+  new_unit_id  INTEGER NOT NULL REFERENCES rule_units(id),
+  method       TEXT NOT NULL,            -- 'similarity' | 'rule_unit_trailer'（ADR-0004 C6）
+  confidence   REAL,                     -- similarity の場合の類似度
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(prev_unit_id, new_unit_id)
+);
+
 -- 出自（P5 の 2 系統を1テーブルで）
 CREATE TABLE provenance (
   id          INTEGER PRIMARY KEY,
-  unit_id     INTEGER NOT NULL REFERENCES rule_units(id),
+  unit_id     INTEGER NOT NULL UNIQUE REFERENCES rule_units(id),
   source_kind TEXT NOT NULL,             -- 'git' | 'fs'
   commit_sha  TEXT,                      -- git のみ: 初出コミット
   committed_at TEXT,
   author      TEXT,
-  fs_created  TEXT,                      -- fs のみ
+  fs_created  TEXT,                      -- fs のみ。birth time が取れない環境では NULL
   fs_modified TEXT,
-  note        TEXT                       -- 「履歴なし」等
+  note        TEXT                       -- 「履歴なし」「fs時刻は参考値」等
 );
 
 -- 承認ステータス履歴（最新行が現状態）
@@ -105,7 +122,8 @@ CREATE TABLE criteria (
   id          INTEGER PRIMARY KEY,
   name        TEXT NOT NULL,
   description TEXT,
-  weight      INTEGER NOT NULL,          -- 合計100になるよう管理
+  weight      INTEGER NOT NULL CHECK(weight BETWEEN 0 AND 100),
+               -- active な項目の合計=100 はアプリ層で保証（CHECK では表せない）
   source      TEXT,                      -- 例: "DarkBench ICLR2025"
   active_from TEXT NOT NULL DEFAULT (datetime('now')),
   active_to   TEXT                       -- NULL=現行。項目更新は差し替えで残す
@@ -117,7 +135,7 @@ CREATE TABLE score_runs (
   unit_id       INTEGER NOT NULL REFERENCES rule_units(id),
   scorer        TEXT NOT NULL,           -- 採点AI識別子（交代可・D8）
   model_version TEXT,
-  total_score   INTEGER NOT NULL,        -- 0-100
+  total_score   INTEGER NOT NULL CHECK(total_score BETWEEN 0 AND 100),
   rationale     TEXT NOT NULL,           -- 人が検査できる採点根拠（D2）
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -125,8 +143,9 @@ CREATE TABLE score_details (
   id           INTEGER PRIMARY KEY,
   score_run_id INTEGER NOT NULL REFERENCES score_runs(id),
   criterion_id INTEGER NOT NULL REFERENCES criteria(id),
-  score        INTEGER NOT NULL,
-  evidence     TEXT                      -- 条内の該当箇所の引用
+  score        INTEGER NOT NULL CHECK(score >= 0),  -- 上限は criterion.weight
+  evidence     TEXT,                     -- 条内の該当箇所の引用
+  UNIQUE(score_run_id, criterion_id)     -- 同一項目の二重採点を防ぐ
 );
 
 -- 推奨 vs 最終判断（D3 精度実測の根拠）
@@ -134,14 +153,17 @@ CREATE TABLE recommendations (
   id            INTEGER PRIMARY KEY,
   unit_id       INTEGER NOT NULL REFERENCES rule_units(id),
   score_run_id  INTEGER REFERENCES score_runs(id),
-  recommended_status TEXT NOT NULL,      -- AI の推奨
+  recommended_status TEXT NOT NULL CHECK(recommended_status IN
+                  ('approved','provisional_ai','under_review','quarantined','rejected')),
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE decisions (
   id                INTEGER PRIMARY KEY,
   recommendation_id INTEGER NOT NULL REFERENCES recommendations(id),
-  final_status      TEXT NOT NULL,       -- 林さんの最終決定
-  agreed            INTEGER NOT NULL,    -- 1=推奨どおり 0=覆した（精度算出）
+  final_status      TEXT NOT NULL CHECK(final_status IN
+                      ('approved','provisional_ai','under_review','quarantined','rejected')),
+  -- 推奨との一致は recommended_status = final_status で算出（列は持たない。
+  -- 保存すると矛盾した行を許容するため）
   decided_by        TEXT NOT NULL DEFAULT 'human',
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -150,6 +172,7 @@ CREATE TABLE decisions (
 CREATE TABLE questions (
   id          INTEGER PRIMARY KEY,
   unit_id     INTEGER REFERENCES rule_units(id),  -- 関係する条（あれば）
+  retry_of    INTEGER REFERENCES questions(id),  -- タイムアウト後の再質問元
   question    TEXT NOT NULL,             -- 林質問ルール準拠の文
   status      TEXT NOT NULL DEFAULT 'pending'
               CHECK(status IN ('pending','answered','timed_out','cancelled')),
@@ -166,7 +189,8 @@ CREATE TABLE provisional_records (
   question_id INTEGER REFERENCES questions(id),  -- タイムアウトした質問
   request_ref TEXT NOT NULL,             -- 「進めてほしい依頼」の識別
   adr_path    TEXT NOT NULL,             -- 暫定ルールを記録した ADR
-  confirmed   INTEGER NOT NULL DEFAULT 0, -- 林さんが要確認一覧で確認済みか
+  outcome     TEXT CHECK(outcome IN ('confirmed','reverted','modified')),
+  confirmed_at TEXT,                     -- 林さんが確認した日時（NULL=未確認）
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -182,6 +206,18 @@ CREATE TABLE pull_requests (
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(forgejo_repo, pr_number)
 );
+-- PR が提案する条（ファイルに未適用のものも含む。審査対象の実体）
+CREATE TABLE proposed_units (
+  id             INTEGER PRIMARY KEY,
+  pr_id          INTEGER NOT NULL REFERENCES pull_requests(id),
+  action         TEXT NOT NULL CHECK(action IN ('add','modify','remove')),
+  file_path      TEXT NOT NULL,          -- 追加/変更先
+  heading_path   TEXT,
+  raw_text       TEXT NOT NULL,          -- 提案条の本文（未適用なので rule_units には無い）
+  norm_hash      TEXT,
+  target_unit_id INTEGER REFERENCES rule_units(id)  -- modify/remove の対象既存条
+);
+
 CREATE TABLE reviews (
   id          INTEGER PRIMARY KEY,
   pr_id       INTEGER NOT NULL REFERENCES pull_requests(id),
@@ -203,10 +239,37 @@ CREATE TABLE audit_log (
 );
 ```
 
+## 状態遷移（status の遷移ルール）
+
+新しい状態への遷移は以下の経路のみ許可する。アプリ層で検査し、
+定義外の遷移はエラーにする（DDL の CHECK では行間制約を表せないため）。
+
+```
+（新規条）        → under_review
+（暫定追加）      → provisional_ai          -- 不在時の先行追加（D6）
+under_review     → approved | rejected | quarantined
+provisional_ai   → approved | rejected | quarantined   -- 林さんの確認結果
+approved         → quarantined | under_review          -- 再審査
+quarantined      → approved | rejected                 -- 復元 / 正式却下
+rejected         → under_review                        -- 再申請
+```
+
+「状態遷移」と「推奨/決定」の同期規約:
+
+- `decisions` への記録と同時に、対応する `status_history` 行を
+  同じトランザクションで書く（最終判断＝新しい状態）
+- AI が単独で判断を確定するのは `provisional_ai` への遷移のみ。
+  それ以外の状態遷移で `decided_by` が `ai:*` の行は監査上「要確認」
+
 ## 補足
 
 - **現状態の取得**: `status_history` の unit ごとの最新行。VIEW
   `current_status` を作って UI から使う想定
+- **イベントの順序**: `created_at` は秒精度なので、同一秒の順序は
+  `id` 順で判断する（全テーブル共通）
+- **隔離中の条の物理位置**: `quarantine/<file>/<content_hash>.md`
+  （ADR-0002 P6）から導出できるので列は持たない。
+  隔離・復元の操作自体は audit_log に記録する
 - **条が編集で別条になった場合**: 旧 `rule_units.present=0`、新条が新 id で登場。
   ステータスの引き継ぎは「同 file+heading_path で content_hash が近い」
   対応付け後に行う（対応付けロジックは ADR-0002 未決事項と連動）
@@ -217,6 +280,8 @@ CREATE TABLE audit_log (
 ## 未決の細部
 
 - 推奨精度の集計期間・バイパスモード移行の閾値（D3 の運用値）
-- `decisions.agreed` を自動算出するか手動記録するか（推奨と最終の一致比較で
-  自動算出可。ただし「推奨に無い判断」も記録できる形は残す）
 - 質問タイムアウトの初期値（ADR-0001 未決事項と同じ）
+- 状態遷移ルールを SQLite の trigger で強制するかアプリ層のみにするか
+- `unit_succession` の対応付けを自動実行するか人の確認を挟むか
+- PR マージ時に `proposed_units` → `rule_units` への反映をどの
+  トランザクション境界で行うか（適用処理設計と連動）
