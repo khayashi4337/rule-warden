@@ -37,13 +37,14 @@ def provenance(repo_root: Path, rel_file: str) -> Provenance:
         out = None
 
     if out is not None and out.returncode == 0 and out.stdout.strip():
-        fields = out.stdout.splitlines()
+        fields = [l for l in out.stdout.splitlines() if l.strip()]
+        # git log は新しい順 → 「初出」は最後の 3 連（sha/日時/author）
         if len(fields) >= 3:
             return Provenance(
                 source="git",
-                first_commit=fields[0].strip(),
-                first_seen_at=fields[1].strip(),
-                author=fields[2].strip(),
+                first_commit=fields[-3].strip(),
+                first_seen_at=fields[-2].strip(),
+                author=fields[-1].strip(),
             )
 
     f = root / rel_file

@@ -63,8 +63,14 @@ def union_list(store: WardenStore, root: Path) -> list[dict]:
                 })
 
     junrule = Path(root) / "rules_junrule.md"
+    junrule_in_db = any(
+        i["path"] == "rules_junrule.md" and i["origin"] == "db" for i in items
+    )
+    for i in items:
+        if i["path"] == "rules_junrule.md" and i["origin"] == "db":
+            i["origin"] = "junrule"  # 準ルール棚として表示（O8）
     text = read_markdown(junrule) if junrule.exists() else None
-    if text is not None:
+    if text is not None and not junrule_in_db:
         for u in extract_units(text):
             items.append({
                 "origin": "junrule", "unit_id": None,
@@ -161,24 +167,25 @@ def make_handler(store: WardenStore, root: Path):
                 except (ValueError, KeyError):
                     self._json({"error": "bad request"}, 400)
                     return
-                if action == "confirm":
-                    store.set_status(uid, "approved", "human",
-                                     reason="reviewed: confirm")
-                    store.conn.execute(
-                        "UPDATE provisional_records SET outcome='confirmed', "
-                        "confirmed_at=datetime('now') WHERE unit_id=? "
-                        "AND confirmed_at IS NULL", (uid,))
-                elif action == "revert":
-                    store.set_status(uid, "quarantined", "human",
-                                     reason="reviewed: revert")
-                    store.conn.execute(
-                        "UPDATE provisional_records SET outcome='reverted', "
-                        "confirmed_at=datetime('now') WHERE unit_id=? "
-                        "AND confirmed_at IS NULL", (uid,))
-                else:
-                    self._json({"error": "unknown action"}, 400)
-                    return
-                store.commit()
+                with store.lock:
+                    if action == "confirm":
+                        store.set_status(uid, "approved", "human",
+                                         reason="reviewed: confirm")
+                        store.conn.execute(
+                            "UPDATE provisional_records SET outcome='confirmed', "
+                            "confirmed_at=datetime('now') WHERE unit_id=? "
+                            "AND confirmed_at IS NULL", (uid,))
+                    elif action == "revert":
+                        store.set_status(uid, "quarantined", "human",
+                                         reason="reviewed: revert")
+                        store.conn.execute(
+                            "UPDATE provisional_records SET outcome='reverted', "
+                            "confirmed_at=datetime('now') WHERE unit_id=? "
+                            "AND confirmed_at IS NULL", (uid,))
+                    else:
+                        self._json({"error": "unknown action"}, 400)
+                        return
+                    store.commit()
                 self._json({"ok": True, "unit_id": uid, "action": action})
             else:
                 self._json({"error": "not found"}, 404)

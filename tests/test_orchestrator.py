@@ -98,6 +98,21 @@ class TestScan(unittest.TestCase):
         self.assertEqual(len(items), 2)
         self.assertEqual(items[0]["status"], "provisional_ai")
 
+    def test_review_list_excludes_non_provisional(self):
+        """暫定記録の無い条（LEFT JOIN で NULL）が一覧に混入しない回帰。"""
+        (self.root / "CLAUDE.md").write_text(
+            "- 条A\n- 条B\n", encoding="utf-8")
+        scan(self.st, "local-claude", self.root)
+        items = review_list(self.st)
+        self.assertEqual(items, [])  # 両方 under_review → 一覧は空
+
+    def test_scan_writes_provenance(self):
+        (self.root / "CLAUDE.md").write_text("- 条A\n", encoding="utf-8")
+        scan(self.st, "local-claude", self.root)
+        rows = self.st.conn.execute("SELECT * FROM provenance").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertIn(rows[0]["source_kind"], ("git", "fs"))
+
 
 if __name__ == "__main__":
     unittest.main()

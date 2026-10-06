@@ -12,9 +12,9 @@ import hashlib
 from pathlib import Path
 
 from warden.loadgraph import build_load_graph
-from warden.parser_hash import content_hash
 from warden.parser_io import read_markdown
 from warden.parser_units import extract_units
+from warden.provenance import provenance
 from warden.store import WardenStore
 
 SCANNER = "ai:warden-scanner"
@@ -45,6 +45,7 @@ def scan(store: WardenStore, agent_name: str, root: Path) -> dict:
         units = extract_units(text)
         id_by_index: dict[int, int] = {}
         seen: set[int] = set()
+        prov = provenance(root, rel)
         for i, u in enumerate(units):
             parent_db = id_by_index.get(u.parent) if u.parent is not None else None
             uid, is_new = store.upsert_unit(fid, u, parent_id=parent_db)
@@ -55,6 +56,15 @@ def scan(store: WardenStore, agent_name: str, root: Path) -> dict:
                 stats["new_units"] += 1
                 store.set_status(uid, "under_review", SCANNER,
                                  reason="scan: new unit")
+                store.conn.execute(
+                    "INSERT OR IGNORE INTO provenance "
+                    "(unit_id, source_kind, commit_sha, committed_at, author, "
+                    " fs_modified, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (uid, prov.source, prov.first_commit, prov.first_seen_at,
+                     prov.author,
+                     str(prov.mtime) if prov.mtime is not None else None,
+                     "fs時刻は参考値" if prov.source == "fs" else None),
+                )
         gone = store.mark_absent_except(fid, seen)
         stats["gone_units"] += len(gone)
         for gid in gone:
@@ -78,7 +88,8 @@ def review_list(store: WardenStore, limit: int = 200) -> list[dict]:
         JOIN rule_files rf ON rf.id = ru.file_id
         JOIN current_status cs ON cs.unit_id = ru.id
         LEFT JOIN provisional_records pr ON pr.unit_id = ru.id
-        WHERE cs.status = 'provisional_ai' OR pr.confirmed_at IS NULL
+        WHERE cs.status = 'provisional_ai'
+           OR (pr.id IS NOT NULL AND pr.confirmed_at IS NULL)
         ORDER BY COALESCE(score, -1) DESC, ru.id DESC
         LIMIT ?
         """,

@@ -129,10 +129,6 @@ def classify_lines(text: str) -> list[ClassifiedLine]:
             out.append(ClassifiedLine(i, LineKind.COMMENT, raw, _indent(raw)))
             continue
 
-        if in_comment:
-            out.append(ClassifiedLine(i, LineKind.COMMENT, raw, _indent(raw)))
-            continue
-
         # 引用ブロックの継続/終了
         if in_quote_block:
             if stripped == "" or _RE_HEADING.match(raw) or _RE_QUOTE_LABEL.match(raw):
