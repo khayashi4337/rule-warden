@@ -154,42 +154,42 @@
 
 ### 3a. 抽象＋モック採点
 
-- [ ] 3a.1 `call_scorer`/`call_reviewer`/`call_sanitizer` の I/F 定義
-- [ ] 3a.2 `ai_profiles` から scorer/reviewer を解決（別系統の確認）
-- [ ] 3a.3 モック採点器（固定 or 簡易ヒューリスティックで点数を出す）
-- [ ] 3a.4 `score_runs`+`score_details`+`recommendations` の書込結線
-- [ ] 3a.5 `rationale`（人が検査できる根拠文）の形を確定
-- [ ] 3a.6 エラー/タイムアウト時の扱い（リトライ方針）
-- [ ] 3a.7 呼出し記録（いつ・どのモデル・所要時間）
-- [ ] 3a.8 モックで scan→採点→暫定の E2E
-- [ ] 3a.9 モック採点のテスト
-- [ ] 3a.10 コミット
+- [x] 3a.1 `call_scorer`/`call_reviewer`/`call_sanitizer` の I/F 定義
+- [x] 3a.2 `ai_profiles` から scorer/reviewer を解決（別系統の確認）
+- [x] 3a.3 モック採点器（固定 or 簡易ヒューリスティックで点数を出す）
+- [x] 3a.4 `score_runs`+`score_details`+`recommendations` の書込結線
+- [x] 3a.5 `rationale`（人が検査できる根拠文）の形を確定
+- [x] 3a.6 エラー/タイムアウト時の扱い（リトライ方針）
+- [x] 3a.7 呼出し記録（いつ・どのモデル・所要時間）
+- [x] 3a.8 モックで scan→採点→暫定の E2E
+- [x] 3a.9 モック採点のテスト
+- [x] 3a.10 コミット
 
 ### 3b. 実 AI 接続（契約済み・別系統・期限監視）
 
-- [ ] 3b.1 接続方式の選定（MCP or API。契約中サービスを調査して決める）
-- [ ] 3b.2 scorer モデルの選定・`ai_profiles` 登録
-- [ ] 3b.3 reviewer モデルの選定・登録（別系統＝別ベンダー優先）
-- [ ] 3b.4 `credential_ref` の取り方（env/ファイル参照。値は置かない）
-- [ ] 3b.5 `expires_at` 登録
-- [ ] 3b.6 期限切れ監視（期限接近→要確認・切れ→採点を止めて通知）
-- [ ] 3b.7 実呼出の疎通テスト（1 条を採点してみる）
-- [ ] 3b.8 レート/リトライ/バックオフ
-- [ ] 3b.9 プロンプトテンプレ（採点・審査・サニタイズ各種）
-- [ ] 3b.10 コミット
+- [x] 3b.1 接続方式の選定（MCP or API。契約中サービスを調査して決める）
+- [x] 3b.2 scorer モデルの選定・`ai_profiles` 登録
+- [x] 3b.3 reviewer モデルの選定・登録（別系統＝別ベンダー優先）
+- [x] 3b.4 `credential_ref` の取り方（env/ファイル参照。値は置かない）
+- [x] 3b.5 `expires_at` 登録
+- [x] 3b.6 期限切れ監視（期限接近→要確認・切れ→採点を止めて通知）
+- [x] 3b.7 実呼出の疎通テスト（1 条を採点してみる）
+- [x] 3b.8 レート/リトライ/バックオフ
+- [x] 3b.9 プロンプトテンプレ（採点・審査・サニタイズ各種）
+- [x] 3b.10 コミット
 
 ### 3c. サニタイズ＋PR 審査
 
-- [ ] 3c.1 本来意図推定: git 履歴の旧版を取得
-- [ ] 3c.2 採点根拠と照合して「危ない部分」を特定
-- [ ] 3c.3 sanitize プロンプト → 本来意図に整えた代替文を生成
-- [ ] 3c.4 整え前後の差分（before/after）生成
-- [ ] 3c.5 `unit_succession.method='sanitize'` で新旧対応を記録
-- [ ] 3c.6 意図が読めない条は戻さず要確認へ（仮の決定どおり）
-- [ ] 3c.7 PR 審査プロンプト → `verdict`（approve/request_changes/escalate）
-- [ ] 3c.8 `escalate` 判定（まとまらない場合は自動マージしない）
-- [ ] 3c.9 サニタイズ差分・審査 verdict のテスト
-- [ ] 3c.10 コミット
+- [x] 3c.1 本来意図推定: git 履歴の旧版を取得
+- [x] 3c.2 採点根拠と照合して「危ない部分」を特定
+- [x] 3c.3 sanitize プロンプト → 本来意図に整えた代替文を生成
+- [x] 3c.4 整え前後の差分（before/after）生成
+- [x] 3c.5 `unit_succession.method='sanitize'` で新旧対応を記録
+- [x] 3c.6 意図が読めない条は戻さず要確認へ（仮の決定どおり）
+- [x] 3c.7 PR 審査プロンプト → `verdict`（approve/request_changes/escalate）
+- [x] 3c.8 `escalate` 判定（まとまらない場合は自動マージしない）
+- [x] 3c.9 サニタイズ差分・審査 verdict のテスト
+- [x] 3c.10 コミット
 
 ## フェーズ 4: Web UI（D7・サーバ・クライアント型）
 
