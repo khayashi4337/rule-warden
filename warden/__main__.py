@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--write", action="store_true",
         help="実際にファイルを書き換える（既定は dry-run 表示のみ）")
     sub.add_parser("serve", help="Web UI サーバを起動する（オンデマンド）")
+    sub.add_parser("watch", help="定例スキャン（変化時のみレポート出力）")
 
     return p
 
@@ -93,6 +94,23 @@ def main(argv: list[str] | None = None) -> int:
                 for it in stats[key]:
                     print(f"  {key}: {it}")
             print(f"apply [{mode}]: done")
+        finally:
+            store.close()
+        return 0
+
+    if args.command == "watch":
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        store = WardenStore(config.db_path)
+        store.init_schema()
+        try:
+            from warden.watch import watch_once
+
+            res = watch_once(store, config.agent.name, config.agent.root,
+                             config.data_dir / "reports")
+            if res["changed"]:
+                print(f"watch: 変化あり → {res['report']}")
+            else:
+                print("watch: 変化なし")
         finally:
             store.close()
         return 0

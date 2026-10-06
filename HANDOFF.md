@@ -73,6 +73,13 @@ ADR-0005 で運用方針が確定（O1〜O11）。
 - [2026-10-07] ~~Forgejo API 接続の実施可否~~ → 同日 AI 判断で実施
   （ローカル Forgejo・PR 未マージなら可逆と判断）
 
+定例監視（2026-10-07 追加・稼働中）:
+- `python -m warden watch`: 1回スキャンし、新規条/消失条/防御条消失が
+  あれば data/reports/watch-*.md にレポートを書く（変化なしなら静か）
+- Windows タスクスケジューラ `rule-warden-watch`（毎日 07:00）に登録済み。
+  削除は `schtasks /delete /tn rule-warden-watch`
+- 注意: PC が 07:00 に休止中だとその日はスキップされる
+
 次の作業候補（林さんの指示を待ってから着手すること）:
 - ~~制約削減の検出~~ 実装済み（2026-10-07）: orchestrator.scan が gone 条の
   raw_text を GUARDRAIL_RE（禁止/控え/権限/never 等）で判定し、ヒットすれば
