@@ -33,16 +33,16 @@
 
 ### 1a. 行分類器＋fixture 採取
 
-- [ ] 1a.1 fixture: `.claude` の git 管理 4 ファイルを `tests/fixtures/` に複製
-- [ ] 1a.2 fixture: untracked のルールファイルを数種追加（表・`@`・fence 混在）
-- [ ] 1a.3 行種別 enum（heading/bullet/numbered/table_row/fence_*/comment/import/quote/blank/text）
-- [ ] 1a.4 fence 状態機械（` ``` ` の開閉。中身は解析しない）
-- [ ] 1a.5 HTML コメント検出（`<!--` 〜 `-->`。中身は解析しない）
-- [ ] 1a.6 引用アーカイブ文の目印ルール（引用符・前後注記で除外）
-- [ ] 1a.7 表行検出（`|` で始まる行・区切り行の扱い）
-- [ ] 1a.8 `@` 参照の行内検出（行頭以外・表セル内も拾う）
-- [ ] 1a.9 行分類の単体テスト
-- [ ] 1a.10 コミット
+- [x] 1a.1 fixture: `.claude` の git 管理 4 ファイルを `tests/fixtures/` に複製
+- [x] 1a.2 fixture: untracked のルールファイルを数種追加（表・`@`・fence 混在）
+- [x] 1a.3 行種別 enum（heading/bullet/numbered/table_row/fence_*/comment/import/quote/blank/text）
+- [x] 1a.4 fence 状態機械（` ``` ` の開閉。中身は解析しない）
+- [x] 1a.5 HTML コメント検出（`<!--` 〜 `-->`。中身は解析しない）
+- [x] 1a.6 引用アーカイブ文の目印ルール（引用符・前後注記で除外）
+- [x] 1a.7 表行検出（`|` で始まる行・区切り行の扱い）
+- [x] 1a.8 `@` 参照の行内検出（行頭以外・表セル内も拾う）
+- [x] 1a.9 行分類の単体テスト
+- [x] 1a.10 コミット
 
 ### 1b. 条抽出（リーフ bullet 単位）
 
