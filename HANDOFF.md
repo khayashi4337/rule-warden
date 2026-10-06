@@ -11,7 +11,9 @@ G:\prj2\rule-warden の作業を引き継ぎます。
 1. G:\prj2\rule-warden\README.md （いきさつと「逸脱AIの自浄化の限界」の概念）
 2. G:\prj2\rule-warden\docs\adr\0001-requirements-and-architecture.md （確定済み要件 D1〜D8 とコンポーネント図）
 3. G:\prj2\rule-warden\docs\adr\0002-rule-parser-design.md （条単位パーサー設計・ドラフト）
-4. G:\prj2\rule-warden\docs\adr\0003-sqlite-schema.md （SQLite スキーマ設計・ドラフト）
+4. G:\prj2\rule-warden\docs\adr\0002.5-domain-model.md （要件用語のクラス図・シーケンス図・ドラフト）
+5. G:\prj2\rule-warden\docs\adr\0003-sqlite-schema.md （SQLite スキーマ設計・ドラフト）
+6. G:\prj2\rule-warden\docs\adr\0004-commit-message-rules.md （コミットメッセージルール・ドラフト）
 
 状態: 要件ヒアリング完了（ADR-0001 確定）。Podman machine 作成と Forgejo 起動は完了。
 条単位パーサー設計と SQLite スキーマ設計は ADR-0002/0003 としてドラフト提出済み（林さんレビュー待ち）。実装は未着手。
