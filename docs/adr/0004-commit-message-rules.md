@@ -59,7 +59,11 @@ AI が書くコミットの形式を揃えることで、warden の出自抽出�
 ### C4. AI 作成分の明示
 
 - `Generated with [Devin](...)` と `Co-Authored-By:` trailer は既存どおり付ける
-- どのモデル・エージェントが書いたかを隠さない
+- どのモデル・エージェントが書いたかを隠さない。**effort レベル
+  （例: low / medium / high）も記録する**（2026-10-07 林さん指示）
+  - 理由: 同じモデルでも思考量の設定で出力品質が変わるため、
+    「誰が・どの強度で書いたか」を後から再現・監査できるようにする
+  - 例: `Powered-By: SWE-2 (effort: high)` または trailer で記録
 
 ### C5. 暫定・確定の区別
 
@@ -103,6 +107,7 @@ ADR-0002 準拠: CLAUDE.md §2 の号令待ち条を隔離
 隔離先: quarantine/CLAUDE.md/<hash>.md
 
 Rule-Unit: CLAUDE.md#ab12cd34ef56
+Powered-By: SWE-2 (effort: high)
 Generated with [Devin](https://devin.ai)
 Co-Authored-By: Devin <...>
 ```
