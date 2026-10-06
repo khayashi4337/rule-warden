@@ -89,7 +89,7 @@ CREATE TABLE unit_succession (
   id           INTEGER PRIMARY KEY,
   prev_unit_id INTEGER NOT NULL REFERENCES rule_units(id),
   new_unit_id  INTEGER NOT NULL REFERENCES rule_units(id),
-  method       TEXT NOT NULL,            -- 'similarity' | 'rule_unit_trailer'（ADR-0004 C6）
+  method       TEXT NOT NULL,            -- 'similarity' | 'rule_unit_trailer'（ADR-0004 C6）| 'sanitize'（ADR-0005 O10）
   confidence   REAL,                     -- similarity の場合の類似度
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(prev_unit_id, new_unit_id)
@@ -297,8 +297,9 @@ rejected         → under_review                        -- 再申請
   同じトランザクションで書く（最終判断＝新しい状態）
 - AI が単独で判断を確定するのは `provisional_ai` への遷移のみ。
   それ以外の状態遷移で `decided_by` が `ai:*` の行は監査上「要確認」
-- 例外: AI は `quarantined` へも自動遷移してよい（ルールを外す方向は
-  無害。間違っても復元できる）。これも要確認一覧に載せる
+- 例外: AI は `quarantined` へも自動遷移してよい（ADR-0005 O9 で正式決定。
+  ルールを外す方向は無害・復元可能。汚染量が手作業を超えている）。
+  これも要確認一覧に載せる
 
 ## 補足
 
@@ -318,7 +319,8 @@ rejected         → under_review                        -- 再申請
 - **要確認一覧**: `provisional_records.confirmed_at IS NULL` の条 ＋
   `status=provisional_ai` の条を、直近 `score_runs` の点数順に並べる
   （ADR-0005 O2）。`rules_junrule.md` の準ルールも同じ一覧に
-  union 表示する（ファイル側の条はパーサが抽出・O8）
+  union 表示する（ファイル側の条はパーサが抽出・O8。危険度ソートを
+  効かせるため準ルール条も採点する・仮の決定）
 - **書き換えられた条**: 新 hash で別条として登場し、旧条の承認を
   引き継がない（ADR-0005 O5）。新旧の対応は unit_succession に
   記録するだけ（追跡用）
@@ -327,6 +329,10 @@ rejected         → under_review                        -- 再申請
   under_review → 採点 → provisional_ai のデフォルト経路を通る。
   対応付けロジック（ADR-0002 未決事項と連動）は unit_succession への
   記録だけに使い、追跡専用とする
+- **サニタイズ復元（ADR-0005 O10）**: 隔離中の条は `quarantined` のまま
+  quarantine/ に残り、サニタイズ版が別条（新 hash）としてファイルに
+  戻る。新旧の対応は `unit_succession.method='sanitize'` で記録し、
+  整え前後の差分を一覧で比較できるようにする
 - **criteria の改版**: `active_to` を立てて差し替え。過去スコアとの
   比較可能性を保つため項目を物理削除しない
 - SQLite の日時は UTC ISO8601 文字列（`datetime('now')`）。表示側で JST 変換
